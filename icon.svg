@@ -1,14 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- La servante : l'ampoule qu'on laisse allumée sur un plateau vide. -->
-  <defs>
-    <radialGradient id="halo" cx="50%" cy="38%" r="45%">
-      <stop offset="0" stop-color="#f4b26a" stop-opacity=".55"/>
-      <stop offset="1" stop-color="#f4b26a" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-  <rect width="512" height="512" rx="112" fill="#121831"/>
-  <circle cx="256" cy="196" r="200" fill="url(#halo)"/>
-  <circle cx="256" cy="196" r="58" fill="#f4b26a"/>
-  <rect x="246" y="250" width="20" height="170" rx="6" fill="#eeeae2"/>
-  <rect x="186" y="412" width="140" height="18" rx="9" fill="#eeeae2"/>
+  <!-- Le É d'Éloquence en blocs : la lettre réduite à ses os, l'accent en jaune safran. Formes RawBlock et Memphis. -->
+  <rect width="512" height="512" fill="#000000"/>
+  <polygon points="0,0 132,0 0,132" fill="#0047ab"/>
+  <path d="M512 512H392A120 120 0 0 1 512 392Z" fill="#40e0d0"/>
+  <rect x="132" y="156" width="82" height="288" fill="#ffffff"/>
+  <rect x="132" y="156" width="250" height="72" fill="#ffffff"/>
+  <rect x="132" y="262" width="204" height="72" fill="#ffffff"/>
+  <rect x="132" y="372" width="250" height="72" fill="#ffffff"/>
+  <polygon points="238,126 284,50 350,50 304,126" fill="#f4c430"/>
 </svg>
