@@ -65,13 +65,7 @@ function show(html) {
   return app;
 }
 
-// Changement d'écran en fondu enchaîné, comme un changement de lumière (navigateurs qui le permettent).
-function render() {
-  const calme = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  // Pas de transition app masquée : le navigateur l'annulerait.
-  if (document.startViewTransition && !calme && !document.hidden) document.startViewTransition(dessiner).ready.catch(() => {});
-  else dessiner();
-}
+const render = dessiner;
 
 function dessiner() {
   cleanup?.();
@@ -86,11 +80,38 @@ function dessiner() {
   window.scrollTo(0, 0);
 }
 
+/* ---------- Dessins : pictos des piliers, formes Memphis ---------- */
+
+// Un aplat, un trait épais : currentColor, donc blanc ou noir selon la pastille du pilier.
+const PICTOS = {
+  physique: '<circle cx="36" cy="16" r="9"/><path d="M18 32H54M36 28V50M36 50L24 66M36 50L48 66" fill="none" stroke="currentColor" stroke-width="7"/>',
+  rhetorique: '<path fill-rule="evenodd" d="M10 12h52v34H38L22 62V46H10ZM18 22h36v5H18ZM18 32h24v5H18Z"/>',
+  mental: '<g fill="none" stroke="currentColor" stroke-width="6"><circle cx="36" cy="36" r="26"/><circle cx="36" cy="36" r="13"/></g><circle cx="36" cy="36" r="4"/>',
+  assertivite: '<polygon points="10,28 30,28 58,12 58,60 30,44 10,44"/><rect x="16" y="44" width="12" height="18"/>',
+  pratique: '<path d="M14 38L30 54L58 18" fill="none" stroke="currentColor" stroke-width="8"/>',
+};
+const picto = (k, s = 20) => `<svg class="picto" viewBox="0 0 72 72" width="${s}" height="${s}" fill="currentColor" aria-hidden="true">${PICTOS[k] ?? ''}</svg>`;
+
+// Composition géométrique : les couleurs tournent avec n, chaque leçon a la sienne.
+const MEMPHIS = ['#0047ab', '#f4c430', '#900020', '#00a86b', '#40e0d0', '#4b0082'];
+const memphis = (n = 0, grand = false) => {
+  const c = (i) => MEMPHIS[(n + i) % MEMPHIS.length];
+  return `<svg class="memphis${grand ? ' grand' : ''}" viewBox="0 0 360 160" aria-hidden="true">
+    <path class="f" d="M0 160V36A124 124 0 0 1 124 160Z" fill="${c(0)}"/>
+    <path class="f" d="M126 160A62 62 0 0 1 250 160Z" fill="${c(1)}"/>
+    <polygon class="f" points="262,160 300,66 340,160" fill="${c(2)}"/>
+    <circle class="f" cx="318" cy="40" r="17" fill="${c(3)}"/>
+    <rect x="170" y="24" width="46" height="46" fill="none" stroke="#000" stroke-width="5"/>
+    <polyline points="22,26 42,8 62,26 82,8 102,26 122,8 142,26" fill="none" stroke="#000" stroke-width="5"/>
+    <g fill="#000"><circle cx="240" cy="22" r="4"/><circle cx="258" cy="22" r="4"/><circle cx="276" cy="22" r="4"/><circle cx="240" cy="40" r="4"/><circle cx="258" cy="40" r="4"/><circle cx="276" cy="40" r="4"/></g>
+  </svg>`;
+};
+
 /* ---------- Composants ---------- */
 
 function bars(rows, max) {
-  return `<div class="bars">${rows.map(([label, v, ref]) => `
-    <span>${t(label)}</span>
+  return `<div class="bars">${rows.map(([label, v, ref, icone]) => `
+    <span class="lib">${icone ?? ''}${t(label)}</span>
     <span class="bar" role="img" aria-label="${esc(label)} : ${v} sur ${max}">
       <i ${ref != null ? `class="glisse" style="width:${(100 * v) / max}%;--de:${(100 * ref) / max}%"` : `style="width:${(100 * v) / max}%"`}></i>${ref != null ? `<i class="ref" style="width:${(100 * ref) / max}%"></i>` : ''}
     </span>
@@ -98,7 +119,7 @@ function bars(rows, max) {
 }
 
 function piliersBars(p, ref) {
-  return bars(Object.entries(PILIERS).map(([k, v]) => [v.nom, p?.[k] ?? 0, ref?.[k]]), 100);
+  return bars(Object.entries(PILIERS).map(([k, v]) => [v.nom, p?.[k] ?? 0, ref?.[k], picto(k, 18)]), 100);
 }
 
 function mesures(m) {
@@ -185,6 +206,26 @@ function streak() {
   return n;
 }
 
+// Une couleur par jour de la semaine (palette iranienne) : elle surligne la série. fonce : texte blanc dessus.
+const JOURS = [
+  { c: '#b87333', nom: 'mesi' }, // dimanche
+  { c: '#40e0d0', nom: 'firouzeh' },
+  { c: '#0047ab', nom: 'lajvard', fonce: true },
+  { c: '#f4c430', nom: 'zaferani' },
+  { c: '#900020', nom: 'zereshki', fonce: true },
+  { c: '#00a86b', nom: 'yashm' },
+  { c: '#4b0082', nom: 'nili', fonce: true },
+];
+
+function quatorzeJours() {
+  const faits = new Set(sessions().map((s) => day(s.date)));
+  return Array.from({ length: 14 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - 13 + i);
+    return { d, fait: faits.has(d.toLocaleDateString('sv')), ...JOURS[d.getDay()] };
+  });
+}
+
 /* ---------- Aujourd'hui ---------- */
 
 function today() {
@@ -208,41 +249,56 @@ function today() {
   const bilanDue = (Date.now() - new Date(last.date)) / 864e5 >= 14;
   const nonAnalyse = !last.analysis && get('key') && last.takes?.some((x) => x.transcript);
   const n = streak();
+  const auj = JOURS[new Date().getDay()];
   show(`
-    <h1>${n ? `${n} jour${n > 1 ? 's' : ''} d'affilée.` : "Aujourd'hui, une leçon et un échauffement."}</h1>
+    <p class="mono muted">${new Date().toLocaleDateString('sv')}</p>
+    ${n
+      ? `<h1 class="serie-titre" style="--jour:${auj.c}"><span class="surligne ${auj.fonce ? 'fonce' : ''}">${n} jour${n > 1 ? 's' : ''}</span> d'affilée.</h1>`
+      : "<h1>Aujourd'hui, une leçon et un échauffement.</h1>"}
     ${nonAnalyse ? `<div class="block"><h3>Ton ${profile.bilans?.length ? 'bilan' : 'test'} n'a pas été analysé</h3><p>Le coach peut l'analyser à partir des transcriptions. L'audio, lui, n'est pas gardé.</p><a class="btn primary" href="#/test/analyse">Lancer l'analyse</a></div>` : ''}
     ${bilanDue ? `<div class="block"><h3>C'est l'heure du bilan</h3><p>Deux semaines depuis ta dernière mesure. Les deux mêmes enregistrements, pour voir ce qui a bougé.</p><a class="btn primary" href="#/test">Faire le bilan</a></div>` : ''}
-    ${next ? `
-      <h2>Leçon ${next.n} · ${t(next.titre)}</h2>
-      <p class="muted">${next.duree} min. ${t(next.technique)}</p>
-      ${conseil ? `<p class="note">${t(conseil)}</p>` : ''}
-      <a class="btn primary" href="#/lecon/${next.n}">Ouvrir la leçon</a>`
-      : `<h2>Les quinze leçons sont faites.</h2><p>Continue avec les <a href="#/situations">situations</a> et les échauffements.</p>`}
-    <h2>Échauffements du jour</h2>
-    <ul class="plain">${jour.map(ligne).join('')}</ul>
-    <details><summary>Autres échauffements</summary><ul class="plain">${ECHAUFFEMENTS.map((d) => EX[d.id]).filter((d) => !jour.includes(d)).map(ligne).join('')}</ul></details>
-    ${profile.analysis ? `<h2>Tes piliers</h2>${piliersBars(last.analysis?.piliers ?? profile.analysis.piliers)}` : ''}`);
+    <div class="duo">
+      <div class="duo-a">
+        ${next ? `
+          <section class="block fort">
+            <div class="entete-carte"><p class="mono muted">LEÇON ${String(next.n).padStart(2, '0')}/15 · ${next.duree} MIN</p>${memphis(next.n)}</div>
+            <h2>${t(next.titre)}</h2>
+            <p>${t(next.technique)}</p>
+            ${conseil ? `<p class="note">${t(conseil)}</p>` : ''}
+            <a class="btn primary" href="#/lecon/${next.n}">Ouvrir la leçon</a>
+          </section>`
+          : `<div class="vide">${memphis(0, true)}<h2>Les quinze leçons sont faites.</h2><p>Continue avec les <a href="#/situations">situations</a> et les échauffements.</p></div>`}
+        <div class="sep" aria-hidden="true"></div>
+        <h2>Échauffements du jour</h2>
+        <ul class="plain">${jour.map(ligne).join('')}</ul>
+        <details><summary>Autres échauffements</summary><ul class="plain">${ECHAUFFEMENTS.map((d) => EX[d.id]).filter((d) => !jour.includes(d)).map(ligne).join('')}</ul></details>
+      </div>
+      ${profile.analysis ? `<aside class="duo-b"><h2>Tes piliers</h2>${piliersBars(last.analysis?.piliers ?? profile.analysis.piliers)}</aside>` : ''}
+    </div>`);
 }
 
 /* ---------- Programme et leçon ---------- */
 
-let allume = null; // leçon qu'on vient de marquer comme faite : son projecteur s'allume au prochain passage
-
 function programme() {
   const done = get('progress', {}).lecons ?? {};
-  const vient = allume;
-  allume = null;
   const next = LECONS.find((l) => !done[l.n]);
+  const nb = Object.keys(done).length;
+  const utilises = [...new Set(LECONS.map((l) => l.piliers[0]))];
   show(`
-    <h1>Programme</h1>
-    <p class="muted">Quinze leçons, dans l'ordre. ${Object.keys(done).length} sur 15 faites.</p>
-    <ul class="plain">${LECONS.map((l) => `
-      <li><a class="row-link ${done[l.n] ? 'done' : ''} ${l === next ? 'next' : ''} ${vient === l.n ? 'allume' : ''}" href="#/lecon/${l.n}">
-        <span class="num projo">${l.n}</span>
-        <span class="title">${t(l.titre)}${done[l.n] ? '<span class="sr"> (faite)</span>' : ''}</span>
-        <span class="meta">${l.duree} min · ${l.piliers.map((p) => PILIERS[p].lettre).join(' ')}</span>
+    <h1>${nb} sur 15.</h1>
+    <p class="mono muted">${nb} FAITE${nb > 1 ? 'S' : ''} / ${next ? 1 : 0} SUIVANTE / ${15 - nb - (next ? 1 : 0)} À VENIR</p>
+    <ul class="legende">${utilises.map((k) => `<li><i class="pastille" data-p="${k}">${picto(k, 18)}</i><span>${t(PILIERS[k].nom)}</span></li>`).join('')}</ul>
+    <ol class="mosaique">${LECONS.map((l) => `
+      <li><a class="tuile ${done[l.n] ? 'fait' : ''} ${l === next ? 'suivante' : ''}" data-p="${l.piliers[0]}" href="#/lecon/${l.n}">
+        <span>
+          <span class="tete-tuile"><b class="num">${String(l.n).padStart(2, '0')}</b><span class="piliers">${l.piliers.map((p) => picto(p, 20)).join('')}<span class="sr">${l.piliers.map((p) => t(PILIERS[p].nom)).join(', ')}</span></span></span>
+          ${l === next ? '<span class="etiquette">Suivante</span>' : ''}
+        </span>
+        <span><span class="nom">${t(l.titre)}${done[l.n] ? '<span class="sr"> (faite)</span>' : ''}</span><span class="duree">${l.duree} min</span></span>
       </a></li>`).join('')}
-    </ul>`);
+    </ol>
+    ${next ? `<p class="mono muted">${String(next.n).padStart(2, '0')} · ${t(next.titre)} · ${next.duree} MIN</p>
+    <a class="btn primary" href="#/lecon/${next.n}">Ouvrir la leçon ${String(next.n).padStart(2, '0')}</a>` : ''}`);
 }
 
 function lastSessionFor(exId) {
@@ -256,7 +312,7 @@ function lecon(n) {
   const done = progress.lecons?.[l.n];
   const conseil = get('plan', {}).conseils?.find((c) => c.lecon === l.n)?.conseil;
   show(`
-    <a class="back" href="#/programme">Programme</a>
+    <div class="entete-carte"><a class="back" href="#/programme">Programme</a>${memphis(l.n)}</div>
     <h1>${l.n}. ${t(l.titre)}</h1>
     <p class="muted">${l.duree} min · ${l.piliers.map((p) => t(PILIERS[p].nom)).join(', ')}</p>
     ${conseil ? `<p class="note">${t(conseil)}</p>` : ''}
@@ -276,7 +332,7 @@ function lecon(n) {
     </div>`).onclick = (e) => {
     if (!e.target.closest('[data-act="done"]')) return;
     progress.lecons ??= {};
-    if (done) delete progress.lecons[l.n]; else { progress.lecons[l.n] = new Date().toISOString(); allume = l.n; }
+    if (done) delete progress.lecons[l.n]; else progress.lecons[l.n] = new Date().toISOString();
     set('progress', progress);
     lecon(n);
   };
@@ -436,7 +492,7 @@ function lancer(ex, refaire) {
     const s = {
       id: crypto.randomUUID(), date: new Date().toISOString(), exId: ex.id, titre: ex.titre, origine: ex.origine,
       retour: ex.retour, refaire, criteres: ex.criteres,
-      consigne: take.consigne, transcript: take.transcript, metrics: take.metrics, feedback: null, error: null, autoEval: {},
+      consigne: take.consigne, transcript: take.transcript, metrics: take.metrics, feedback: null, error: null,
       rec: { durationSec: take.durationSec, speechStart: take.speechStart, speechEnd: take.speechEnd, pauses: take.pauses },
     };
     saveSession(s);
@@ -496,7 +552,6 @@ function sessionView(id) {
     ${s.souffle ? `${palier(s.note)}<p>Expirations : ${s.souffle.map((d) => `${nf(d)} s`).join(', ')}.</p>` : s.aveugle ? `<ul>${s.aveugle.map((x) => `<li>${x.note ? `${x.note}. ` : ''}Voulu : ${t(nomIntention(x.voulu))}. Entendu : ${t(nomIntention(x.entendu))}.</li>`).join('')}</ul>`
       : s.intonation ? `<ul>${s.intonation.map((x) => (typeof x === 'number' ? { chute: x } : x)).map((x) => `<li>${x.note ? `${x.note}. ` : ''}Ta voix a commencé à descendre ${nf(x.chute)} s avant la fin.</li>`).join('')}</ul>`
       : mesures(s.metrics)}
-    ${ex.autoEval ? `<h2>Ton auto-évaluation</h2>${ex.autoEval.map((q, i) => `<label class="check"><input type="checkbox" data-eval="${i}" ${s.autoEval?.[i] ? 'checked' : ''}> ${t(q)}</label>`).join('')}` : ''}
     ${s.manuel && !s.transcript ? '' : `<h2>Notes du coach</h2>${fb}`}
     <details><summary>Consigne et transcription</summary><p class="didascalie">${t(s.consigne)}</p>${s.transcriptIA ? `<h3>Ce que le coach a entendu</h3><p>${t(s.transcriptIA)}</p><h3>Dictée du navigateur</h3>` : ''}<p>${t(s.transcript || '(vide)')}</p></details>
     <div class="actions">
@@ -509,12 +564,6 @@ function sessionView(id) {
     s.error = null;
     askFeedback(s);
     sessionView(id);
-  };
-  app.onchange = (e) => {
-    const i = e.target.dataset.eval;
-    if (i == null) return;
-    s.autoEval = { ...s.autoEval, [i]: e.target.checked };
-    saveSession(s);
   };
 }
 
@@ -626,7 +675,7 @@ function courbesFin(toi, mod) {
         <line class="tete" x1="0" x2="0" y1="-4" y2="${H + 4}"/>
       </svg></figure>`;
   };
-  return `<div class="legend"><span><i style="background:var(--accent-fill)"></i>Toi</span>${mod ? '<span><i style="background:var(--muted)"></i>Modèle</span>' : ''}</div>
+  return `<div class="legend"><span><i style="background:var(--toi)"></i>Toi</span>${mod ? '<span><i style="background:var(--modele)"></i>Modèle</span>' : ''}</div>
     ${graphe('st', ST, 'Hauteur, autour de ta note moyenne')}
     ${graphe('db', [-30, 8], 'Énergie')}
     <p class="small muted">Le trait vertical marque le moment où la voix commence à descendre. Touche une courbe pour réécouter à partir de ce point.</p>`;
@@ -1080,7 +1129,7 @@ function test(mode) {
       <h1>${bilan ? 'Ton bilan' : 'Ton profil'}</h1>
       <div class="revele">
       <p class="lead">${t(a.synthese)}</p>
-      ${avant ? '<div class="legend"><span><i style="background:var(--accent-fill)"></i>Maintenant</span><span><i style="background:var(--muted)"></i>Avant</span></div>' : ''}
+      ${avant ? '<div class="legend"><span><i style="background:var(--toi)"></i>Maintenant</span><span><i style="background:var(--modele)"></i>Avant</span></div>' : ''}
       ${piliersBars(a.piliers, avant?.piliers)}
       ${a.recit.length ? `<h2>Ton récit</h2>${a.recit.map((r) => `<p class="error">Tu as dit « ${t(r.dit)} ». La fiche dit : ${t(r.fiche)}</p>`).join('')}` : ''}
       <h2>Ce qui tient</h2><ul>${a.forces.map((x) => `<li>${t(x)}</li>`).join('')}</ul>
@@ -1130,8 +1179,20 @@ function progres() {
   const serie = (titre, values, opts) => `
     <div class="block"><div class="spark-head"><span>${t(titre)}</span><b>${values.length ? nf(values.at(-1)) + (opts?.unit ?? '') : ''}</b></div>${spark(values, opts)}</div>`;
 
+  const jours = quatorzeJours();
+  const faites = jours.filter((j) => j.fait).length;
+  const demain = JOURS[(new Date().getDay() + 1) % 7];
   show(`
     <h1>Progrès</h1>
+    <h2>14 jours.</h2>
+    <div class="jours-tete" aria-hidden="true">${jours.slice(0, 7).map((j) => `<span>${j.d.toLocaleDateString('fr-FR', { weekday: 'short' }).slice(0, 3)}</span>`).join('')}</div>
+    <ol class="jours">${jours.map((j, i) => `
+      <li class="${j.fait ? 'fait' : ''} ${j.fonce ? 'fonce' : ''} ${i === 13 ? 'aujourdhui' : ''}" style="--jour:${j.c}">
+        <span class="sr">${j.d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}, ${j.fait ? 'séance faite' : 'pas de séance'}</span>
+        <span aria-hidden="true">${String(j.d.getDate()).padStart(2, '0')}</span>
+      </li>`).join('')}
+    </ol>
+    <p class="mono muted">${faites} SÉANCE${faites > 1 ? 'S' : ''} SUR 14 JOURS. DEMAIN, LA CASE SERA ${demain.nom.toUpperCase()}.</p>
     <div class="mesures">
       <div class="mesure"><b>${all.length}</b><span>séances</span></div>
       <div class="mesure"><b>${streak()}</b><span>jours d'affilée</span></div>
@@ -1142,17 +1203,18 @@ function progres() {
     ${serie('Blancs de 2 s ou plus', parlees.map((s) => s.metrics.blanks))}
     ${serie('Tics par minute', parlees.map(tpm))}
     ${serie('Mots par minute (zone visée : 130 à 160)', parlees.map((s) => s.metrics.wpm), { band: [130, 160] })}
-    ${first ? `<h2>Piliers</h2>
-      ${latest ? '<div class="legend"><span><i style="background:var(--accent-fill)"></i>Dernier bilan</span><span><i style="background:var(--muted)"></i>Test d\'entrée</span></div>' : ''}
+    ${first ? `<div class="sep" aria-hidden="true"></div><h2>Piliers</h2>
+      ${latest ? '<div class="legend"><span><i style="background:var(--toi)"></i>Dernier bilan</span><span><i style="background:var(--modele)"></i>Test d\'entrée</span></div>' : ''}
       ${piliersBars(latest?.piliers ?? first.piliers, latest ? first.piliers : null)}
       <p>${t((latest ?? first).synthese)}</p>
       <h3>Tes priorités</h3><ul>${(latest ?? first).priorites.map((x) => `<li>${t(x)}</li>`).join('')}</ul>
       <h3>Dans trente jours</h3><ul>${(latest ?? first).objectifs30j.map((x) => `<li>${t(x)}</li>`).join('')}</ul>` : ''}
     ${cats.length ? `<h2>Corrections qui reviennent</h2>${bars(cats.map(([k, n]) => [k, n]), cats[0][1])}` : ''}
     ${gardes.length ? `<h2>Garde-fous les plus fréquents</h2>${bars(gardes.map(([k, n]) => [k, n]), gardes[0][1])}` : ''}
+    <div class="sep" aria-hidden="true"></div>
     <h2>Historique</h2>
     ${all.length ? `<ul class="plain">${all.slice(0, 40).map((s) => `<li><a class="row-link" href="#/session/${s.id}"><span class="title">${t(s.titre)}</span><span class="meta">${dateFr(s.date)}${s.feedback ? ` · ${nf(mean(Object.values(s.feedback.scores)))}/10` : ''}</span></a></li>`).join('')}</ul>`
-      : '<p class="muted">Aucune séance pour l\'instant. Commence par <a href="#/">l\'échauffement du jour</a>.</p>'}`);
+      : `<div class="vide">${memphis(3, true)}<p class="muted">Aucune séance pour l'instant. Commence par <a href="#/">l'échauffement du jour</a>.</p></div>`}`);
 }
 
 /* ---------- Réglages ---------- */
