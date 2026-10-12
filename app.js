@@ -3,12 +3,19 @@ import { analyze, dureeSouffle, noteSouffle } from './metrics.js';
 import { startRecording, canTranscribe, toWavBase64, decodeMono, wavOctets, SILENCE_RMS } from './recorder.js';
 import { feedback, diagnose, speak, intention } from './coach.js';
 import { contour, finDePhrase, hauteurTrame, noteFin } from './pitch.js';
+import { fusion, verifier, lire, ecrire } from './sync.js';
 
 /* ---------- Stockage (sur l'appareil uniquement) ---------- */
 
 const get = (k, d = null) => { try { return JSON.parse(localStorage.getItem('eloq.' + k)) ?? d; } catch { return d; } };
-const set = (k, v) => localStorage.setItem('eloq.' + k, JSON.stringify(v));
-const DATA_KEYS = ['context', 'recit', 'profile', 'plan', 'progress', 'sessions'];
+// Données de l'utilisateur : exportées, importées et synchronisées. La clé API et le jeton de synchro n'en font pas partie.
+const DATA_KEYS = ['context', 'recit', 'profile', 'plan', 'progress', 'sessions', 'intonation', 'intentions', 'phrasePerso'];
+function set(k, v) {
+  localStorage.setItem('eloq.' + k, JSON.stringify(v));
+  if (!DATA_KEYS.includes(k)) return;
+  localStorage.setItem('eloq.majs', JSON.stringify({ ...get('majs', {}), [k]: new Date().toISOString() }));
+  planifier();
+}
 const perso = () => ({ context: get('context', ''), recit: get('recit', []) });
 const sessions = () => get('sessions', []);
 function saveSession(s) {
@@ -1150,7 +1157,72 @@ function progres() {
 
 /* ---------- Réglages ---------- */
 
+/* ---------- Synchronisation entre appareils (dépôt GitHub privé) ---------- */
+
+let synchro = null, minuteur = null;
+const etatLocal = () => ({ donnees: Object.fromEntries(DATA_KEYS.map((k) => [k, get(k)])), majs: get('majs', {}) });
+
+function errSync(e) {
+  if (e.status === 401) return 'Jeton refusé ou expiré. Crée-en un nouveau.';
+  if (e.status === 403) return "Le jeton n'a pas le droit d'écrire : coche Contents, Read and write.";
+  if (e.status === 404) return "Dépôt introuvable, ou le jeton n'y a pas accès.";
+  if (e instanceof TypeError) return 'Connexion impossible avec GitHub.';
+  return e.message;
+}
+
+function texteSync() {
+  const info = get('syncInfo', {});
+  if (!get('sync')?.jeton) return 'Synchro désactivée : tes données restent sur cet appareil.';
+  if (info.erreur) return `Synchro en échec : ${info.erreur}`;
+  return info.date ? `Synchronisé le ${dateFr(info.date)} à ${new Date(info.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}.` : 'Synchro active.';
+}
+
+function planifier() {
+  if (!get('sync')?.jeton) return;
+  clearTimeout(minuteur);
+  minuteur = setTimeout(synchroniser, 3000);
+}
+
+// Lit le dépôt, fusionne avec cet appareil, écrit le résultat des deux côtés.
+function synchroniser() {
+  const cfg = get('sync');
+  if (!cfg?.jeton) return Promise.resolve();
+  if (synchro) return synchro.then(planifier);
+  synchro = (async () => {
+    for (let essai = 0; ; essai++) {
+      const distant = await lire(cfg);
+      const avant = etatLocal();
+      const fus = distant ? fusion(avant, distant.etat) : avant;
+      for (const k of DATA_KEYS) {
+        if (fus.donnees[k] == null) localStorage.removeItem('eloq.' + k);
+        else localStorage.setItem('eloq.' + k, JSON.stringify(fus.donnees[k]));
+      }
+      localStorage.setItem('eloq.majs', JSON.stringify(fus.majs));
+      try {
+        if (!distant || JSON.stringify(distant.etat) !== JSON.stringify(fus)) await ecrire(cfg, fus, distant?.sha);
+      } catch (e) {
+        if ((e.status === 409 || e.status === 422) && essai < 2) continue; // un autre appareil a écrit entre-temps
+        throw e;
+      }
+      localStorage.setItem('eloq.syncInfo', JSON.stringify({ date: new Date().toISOString() }));
+      // Nouveautés venues de l'autre appareil : on rafraîchit les écrans qui ne sont pas en plein exercice.
+      const route = location.hash.replace(/^#\/?/, '').split('/')[0];
+      if (JSON.stringify(avant.donnees) !== JSON.stringify(fus.donnees) && ['', 'programme', 'lecon', 'progres', 'situations'].includes(route)) render();
+      return;
+    }
+  })()
+    .catch((e) => localStorage.setItem('eloq.syncInfo', JSON.stringify({ ...get('syncInfo', {}), erreur: errSync(e) })))
+    .finally(() => {
+      synchro = null;
+      const el = document.getElementById('sync-etat');
+      if (el) el.textContent = texteSync();
+    });
+  return synchro;
+}
+addEventListener('visibilitychange', () => document.visibilityState === 'visible' && synchroniser());
+
 function reglages() {
+  const cfg = get('sync');
   show(`
     <h1>Réglages</h1>
     <h2>Clé API Google AI Studio</h2>
@@ -1170,6 +1242,24 @@ function reglages() {
       <label class="btn">Importer un fichier<input type="file" id="import" accept="application/json,.json" hidden></label>
     </div>
     <p id="msg" role="status" class="note" hidden></p>
+    <h2>Synchronisation entre appareils</h2>
+    <p class="small muted">Tes données passent par un dépôt GitHub privé, à toi seul. La clé API et le jeton ne sont pas synchronisés : saisis-les sur chaque appareil.</p>
+    <details><summary>Créer le jeton, une seule fois</summary><ol class="small">
+      <li>Ouvre <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>.</li>
+      <li>Token name : Éloquence synchro. Expiration : un an.</li>
+      <li>Repository access : Only select repositories, puis eloquence-donnees.</li>
+      <li>Permissions, Repository permissions, Contents : Read and write.</li>
+      <li>Generate token, puis copie-le : il ne s'affiche qu'une fois.</li>
+    </ol></details>
+    <label class="small muted" for="sync-depot">Dépôt privé</label>
+    <input type="text" id="sync-depot" autocomplete="off" spellcheck="false" value="${esc(cfg?.depot ?? 'holyactor-eng/eloquence-donnees')}">
+    <label class="small muted" for="sync-jeton">Jeton d'accès</label>
+    <input type="password" id="sync-jeton" autocomplete="off" spellcheck="false" placeholder="github_pat_…" value="${esc(cfg?.jeton ?? '')}">
+    <div class="actions">
+      <button class="btn primary" data-act="sync-on">${cfg?.jeton ? 'Synchroniser maintenant' : 'Activer la synchro'}</button>
+      ${cfg?.jeton ? '<button class="btn" data-act="sync-off">Désactiver</button>' : ''}
+    </div>
+    <p class="small muted" id="sync-etat" role="status">${t(texteSync())}</p>
     <h2>Recommencer</h2>
     <div class="actions">
       <a class="btn" href="#/test/complet">Refaire le test complet</a>
@@ -1194,8 +1284,28 @@ function reglages() {
       msg(`Fichier illisible : ${err.message}.`);
     }
   };
-  app.onclick = (e) => {
+  app.onclick = async (e) => {
     const act = e.target.closest('[data-act]')?.dataset.act;
+    const etatSync = (txt) => (document.getElementById('sync-etat').textContent = txt);
+    if (act === 'sync-on') {
+      const nouveau = { depot: document.getElementById('sync-depot').value.trim(), jeton: document.getElementById('sync-jeton').value.trim() };
+      etatSync('Vérification du dépôt…');
+      try {
+        await verifier(nouveau);
+      } catch (err) {
+        return etatSync(errSync(err));
+      }
+      set('sync', nouveau);
+      localStorage.removeItem('eloq.syncInfo');
+      etatSync('Synchronisation…');
+      await synchroniser();
+      reglages();
+    }
+    if (act === 'sync-off') {
+      localStorage.removeItem('eloq.sync');
+      localStorage.removeItem('eloq.syncInfo');
+      reglages();
+    }
     if (act === 'export') {
       const data = { app: 'eloquence', exporte: new Date().toISOString(), ...Object.fromEntries(DATA_KEYS.map((k) => [k, get(k)])) };
       const a = document.createElement('a');
@@ -1203,6 +1313,7 @@ function reglages() {
       a.download = `eloquence-${new Date().toLocaleDateString('sv')}.json`;
       a.click();
     }
+    if (act === 'wipe' && cfg?.jeton) return alert('La synchro est active : tes données reviendraient depuis le dépôt. Désactive-la d\'abord.');
     if (act === 'wipe' && confirm('Effacer définitivement toutes tes séances, ton profil et ton plan ? Ta clé API est gardée.')) {
       for (const k of DATA_KEYS) localStorage.removeItem('eloq.' + k);
       location.hash = '#/';
@@ -1213,3 +1324,4 @@ function reglages() {
 // En dernier : tous les écrans et leurs constantes doivent exister avant le premier affichage.
 addEventListener('hashchange', render);
 render();
+synchroniser();
