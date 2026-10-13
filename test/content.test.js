@@ -14,8 +14,22 @@ test('typographie : ni tiret cadratin, ni demi-cadratin, ni guillemets droits', 
   }
 });
 
-test('aucun tic IA ni corporate', () => {
-  for (const s of all) for (const b of BANNIS) assert.ok(!s.toLowerCase().includes(b), `« ${b} » dans : ${s.slice(0, 80)}`);
+// Un mot cité entre guillemets est enseigné, pas employé : « En effet » peut être étudié.
+const horsGuillemets = (s) => s.replace(/«[^»]*»/g, '');
+
+test('aucun tic IA ni corporate, sauf cité entre guillemets', () => {
+  for (const s of all) for (const b of BANNIS) assert.ok(!horsGuillemets(s).toLowerCase().includes(b), `« ${b} » dans : ${s.slice(0, 80)}`);
+});
+
+test('un tic cité entre guillemets passe, hors guillemets il est repéré', () => {
+  assert.ok(!horsGuillemets('Raison : « En effet, la salle était pleine. »').toLowerCase().includes('en effet'));
+  assert.ok(horsGuillemets('En effet, la salle était pleine.').toLowerCase().includes('en effet'));
+});
+
+test('PREP enseigne ses connecteurs', () => {
+  const prep = C.LECONS[13].cartes.find((c) => c.titre === 'PREP').texte;
+  for (const m of ['« Je pense que… »', '« En effet', '« Par exemple', "« C'est pourquoi"]) assert.ok(prep.includes(m), m);
+  assert.ok(C.ECHAUFFEMENTS.find((d) => d.id === 'impro-prep').criteres.toLowerCase().includes('connecteurs'));
 });
 
 test('structure : 15 leçons dans l’ordre, piliers valides, exercices complets, ids uniques', () => {

@@ -236,7 +236,7 @@ export const LECONS = [
     cartes: [
       { titre: "Pourquoi le blanc arrive", texte: "Le blanc vient rarement d'un manque d'idées. Il vient d'une mémoire qui cherche un texte appris par cœur au lieu de suivre une structure. Ne rédige pas tout : écris quelques mots-clés, une ligne par bloc, comme les pièces d'un palais que tu traverses. Mémorise le chemin, pas les phrases." },
       { titre: "Soigner l'atterrissage", texte: "On retient la fin d'une phrase plus que son début, et la dernière phrase d'une intervention plus que tout le reste. Prépare ton point d'atterrissage avant le reste : si le milieu flotte, tu sais toujours où tu vas." },
-      { titre: "PREP", texte: "Point : ta réponse en une phrase. Raison : pourquoi. Exemple : un fait vécu. Point : tu redis ta réponse, autrement. Quatre étapes qui tiennent en 45 secondes et qu'on retrouve même sous le stress." },
+      { titre: "PREP", texte: "Point : ta réponse en une phrase, « Je pense que… ». Raison : pourquoi, avec « car… » ou « En effet, … ». Exemple : un fait vécu, « Par exemple, … ». Point : tu redis ta réponse autrement, « C'est pourquoi… ». Les connecteurs font entendre la structure. Quatre étapes qui tiennent en 45 secondes et qu'on retrouve même sous le stress." },
       { titre: "La réponse d'abord", texte: "Face à un jury, la réponse arrive en première phrase, la justification ensuite. Si tu commences par le contexte, le jury attend et décroche. 45 à 60 secondes, puis tu t'arrêtes." },
       { titre: "Trois blocs, trois respirations", texte: "Pour présenter ton parcours, trois blocs suffisent : d'où tu viens, ce que tu fais aujourd'hui, ce que tu viens faire ici. Une vraie respiration entre chaque bloc. Retiens les blocs et les chiffres, pas les phrases." },
       { titre: "Une réponse par interlocuteur", texte: "Devant un jury de deux, la même question n'appelle pas la même réponse. La direction culturelle veut ta méthode ; les ressources humaines veulent ta disponibilité et ta posture. Regarde la personne qui a posé la question et réponds sur son terrain." },
@@ -245,7 +245,7 @@ export const LECONS = [
     exercices: [
       { titre: "« Parlez-nous de votre parcours »", consigne: "Un jury te dit : « Parlez-nous de votre parcours. » Réponds en 90 secondes, en trois blocs séparés par une vraie respiration. Ne récite pas un texte : suis tes trois blocs et tes chiffres.", prep: 30, cible: 90, criteres: "Trois blocs identifiables. Chiffres et faits exacts, comparés à la fiche récit. Pas de liste chronologique de CV. Fin qui ouvre sur le poste ou le projet." },
       { titre: "Une question, deux réponses", consigne: "Question du jury : « Comment voyez-vous vos premiers mois dans ce poste ? » Réponds deux fois, en 45 secondes chacune. D'abord à la directrice de l'action culturelle (méthode, publics, projets), puis à la directrice des ressources humaines (disponibilité, posture, intégration dans l'équipe).", prep: 30, cible: 90, criteres: "Deux réponses réellement différentes, adaptées à chaque interlocutrice. La réponse en première phrase à chaque fois. Environ 45 secondes chacune." },
-      { titre: "Improvisation PREP", consigne: "Sujet : « {sujet} » Réponds en 60 secondes avec PREP : point, raison, exemple, point.", prep: 15, cible: 60, criteres: "Structure PREP identifiable. Exemple concret et vécu. Retour au point à la fin." },
+      { titre: "Improvisation PREP", consigne: "Sujet : « {sujet} » Réponds en 60 secondes avec PREP : point, raison, exemple, point.", prep: 15, cible: 60, criteres: "Structure PREP identifiable. Exemple concret et vécu. Retour au point à la fin. Connecteurs justes entre les étapes : « car », « en effet », « par exemple », « c'est pourquoi »." },
     ],
     defi: "Prépare trois questions qu'on pourrait te poser cette semaine. Pour chacune, écris seulement le point et l'exemple, puis réponds à voix haute.",
   },
@@ -305,7 +305,7 @@ export const PHRASES_INTENTION = [
 ];
 
 export const ECHAUFFEMENTS = [
-  { id: "impro-prep", titre: "Improvisation PREP", cible: "structure et blancs", consigne: "Sujet : « {sujet} » Réponds en PREP : point, raison, exemple, point.", prep: 15, duree: 60 },
+  { id: "impro-prep", titre: "Improvisation PREP", cible: "structure et blancs", consigne: "Sujet : « {sujet} » Réponds en PREP : point, raison, exemple, point. Relie les étapes : « car », « par exemple », « c'est pourquoi ».", prep: 15, duree: 60, criteres: "Structure PREP identifiable. Connecteurs justes entre les étapes, qui suivent la logique du propos." },
   { id: "mot-impose", titre: "Mot imposé", cible: "blancs et agilité", consigne: "Sujet : « {sujet} » Toutes les 20 secondes, un nouveau mot apparaît : intègre-le à ton discours sans t'arrêter.", prep: 10, duree: 60, motsImposes: true },
   { id: "zero-euh", titre: "Zéro « euh »", cible: "hésitations", consigne: "Sujet : « {sujet} » Pas un seul « euh » : remplace-le par un silence.", prep: 10, duree: 60 },
   { id: "virelangues", titre: "Virelangues", cible: "articulation", consigne: "Lis chaque virelangue trois fois, de plus en plus vite, sans perdre la netteté.", texte: VIRELANGUES, prep: 5, duree: 45, criteres: CRITERES_VIRELANGUES },
