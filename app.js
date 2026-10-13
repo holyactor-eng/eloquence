@@ -532,7 +532,8 @@ async function askFeedback(s) {
     const audio = await wav(audios.get(s.id)?.blob);
     s.feedback = await feedback(get('key'), { titre: s.titre, consigne: s.consigne, texte: ex.texte, criteres: s.criteres ?? ex.criteres }, s, perso(), audio);
     s.error = null;
-    set('carnet', versCarnet(get('carnet', []), s.feedback.corrections, s.id, jourJ()));
+    const carnetAvant = get('carnet', []), carnetApres = versCarnet(carnetAvant, s.feedback.corrections, s.id, jourJ());
+    if (carnetApres !== carnetAvant) set('carnet', carnetApres);
     // La transcription de Gemini garde les « euh » que la dictée efface : on recalcule les mesures avec elle.
     if (s.feedback.transcription) {
       s.transcriptIA = s.feedback.transcription;
@@ -574,7 +575,7 @@ function sessionView(id) {
       : s.intonation ? `<ul>${s.intonation.map((x) => (typeof x === 'number' ? { chute: x } : x)).map((x) => `<li>${x.note ? `${x.note}. ` : ''}Ta voix a commencé à descendre ${nf(x.chute)} s avant la fin.</li>`).join('')}</ul>`
       : mesures(s.metrics)}
     ${s.manuel && !s.transcript ? '' : `<h2>Notes du coach</h2>${fb}`}
-    <details><summary>Consigne et transcription</summary><p class="didascalie">${t(s.consigne)}</p>${s.transcriptIA ? `<h3>Ce que le coach a entendu</h3><p>${t(s.transcriptIA)}</p><h3>Dictée du navigateur</h3>` : ''}<p>${t(s.transcript || '(vide)')}</p></details>
+    ${s.langue ? '' : `<details><summary>Consigne et transcription</summary><p class="didascalie">${t(s.consigne)}</p>${s.transcriptIA ? `<h3>Ce que le coach a entendu</h3><p>${t(s.transcriptIA)}</p><h3>Dictée du navigateur</h3>` : ''}<p>${t(s.transcript || '(vide)')}</p></details>`}
     <div class="actions">
       ${s.refaire || ex.id ? `<a class="btn" href="${lien(s.refaire ?? `#/exercice/${ex.id}`)}">Recommencer</a>` : ''}
       <a class="btn" href="${lien(s.retour ?? ex.retour)}">Continuer</a>
@@ -1320,7 +1321,7 @@ function seanceLangue() {
   const resultats = [];
   let i = 0, rec = null, minuteur = null, prise = null, actif = true;
   // Quitter la séance : les attentes en cours (micro, dictée, coach) ne doivent plus rien dessiner ni enregistrer.
-  cleanup = () => { actif = false; clearTimeout(minuteur); rec?.stop(); rec = null; };
+  cleanup = () => { actif = false; clearTimeout(minuteur); rec?.stop(); rec = null; enregistrer(); };
 
   const cadre = (corps) => {
     if (!actif) return;
@@ -1400,6 +1401,7 @@ function seanceLangue() {
     const p = file[i], now = new Date().toISOString();
     const dit = v.entendu || prise?.transcript || '';
     const correct = v.correction || p.attendus[0] || '';
+    const regle = v.regle || p.regle || (p.fiche ? `Fiche ${p.fiche} : ${FICHES[p.fiche - 1].titre}.` : '');
     resultats.push({ id: p.id, type: p.type, reussi: v.reussi, dit });
     let note = '';
     if (p.type === 'corriger') {
@@ -1414,7 +1416,7 @@ function seanceLangue() {
       set('langue', noterPhrase(get('langue', {}), p.id, v.reussi, now));
       if (!v.reussi) {
         const avant = get('carnet', []);
-        const apres = ajouterAuCarnet(avant, { categorie: v.categorie || p.categorie, dit, correct, regle: v.regle || `Fiche ${p.fiche} : ${FICHES[p.fiche - 1].titre}.`, origine: 'atelier', source: p.id }, jour, now);
+        const apres = ajouterAuCarnet(avant, { categorie: v.categorie || p.categorie, dit, correct, regle, origine: 'atelier', source: p.id }, jour, now);
         if (apres !== avant) { set('carnet', apres); note = 'Ajouté au carnet : elle revient demain.'; }
       }
     }
@@ -1424,18 +1426,26 @@ function seanceLangue() {
       <div class="correction langue">
         <p class="dit">Tu as dit : « ${t(dit || '(rien entendu)')} »</p>
         ${correct ? chaine(decouper(correct, p.joint)) : ''}
-        ${v.regle ? `<p class="regle">${t(v.regle)}</p>` : ''}
+        ${regle ? `<p class="regle">${t(regle)}</p>` : ''}
       </div>
       ${note ? `<p class="small">${t(note)}</p>` : ''}${suite}`);
   };
 
-  const fin = () => {
-    if (!resultats.length) return (location.hash = '#/langue');
-    const ok = resultats.filter((r) => r.reussi).length;
+  // Une seule fois, à la fin ou quand on quitte : les phrases déjà dites comptent pour la série et pour « Ma langue ».
+  let enregistree = false;
+  function enregistrer() {
+    if (enregistree || !resultats.length) return;
+    enregistree = true;
     saveSession({
       id: crypto.randomUUID(), date: new Date().toISOString(), exId: 'atelier-langue', titre: 'Atelier langue', origine: 'Atelier langue',
       retour: '#/langue', refaire: '#/langue/seance', consigne: '', transcript: '', metrics: analyze({}), feedback: null, manuel: true, langue: resultats,
     });
+  }
+
+  const fin = () => {
+    if (!resultats.length) return (location.hash = '#/langue');
+    const ok = resultats.filter((r) => r.reussi).length;
+    enregistrer();
     const ouverts = get('carnet', []).filter((e) => !e.sorti).length;
     show(`
       <a class="back" href="#/langue">Atelier langue</a>
