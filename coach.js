@@ -1,4 +1,5 @@
 import { enteteWav } from './recorder.js';
+import { TYPES } from './langue.js';
 
 // Appels à Gemini (Google AI Studio, offre gratuite) : diagnostic d'entrée et feedback d'exercice.
 // Réponses en JSON structuré. L'audio est joint quand il existe.
@@ -26,7 +27,7 @@ export const GARDE_FOUS = [
 const RULES = `Règles d'écriture de tes réponses :
 - Français, tutoiement, phrases courtes et concrètes.
 - Jamais de tiret cadratin. Guillemets français « ».
-- Aucun tic d'IA ni langage corporate : pas de « il est important de noter », « en effet », « il convient de », « force est de constater », « synergie », « holistique », « incroyable », « extraordinaire », « révolutionnaire ».
+- Aucun tic d'IA ni langage corporate : pas de « il est important de noter », « en effet », « il convient de », « force est de constater », « synergie », « holistique », « incroyable », « extraordinaire », « révolutionnaire ». Tu peux citer ces mots entre guillemets quand tu corriges l'orateur.
 - Pas de compliment creux. Un point fort n'est cité que s'il est précis et cite ce qui a été dit.`;
 
 const COACH = `Tu es le coach de prise de parole de la personne qui s'entraîne (son contexte suit, s'il est fourni). Tu agis en partenaire exigeant, en mode contradicteur : tu signales les angles morts et tu privilégies la justesse à l'effet.
@@ -39,6 +40,7 @@ Tu reçois une prise de parole : l'enregistrement audio quand il existe, et la t
 - Ne juge ni la ponctuation, ni les majuscules, ni l'orthographe, ni les accords qui ne s'entendent pas à l'oral.
 - Une différence entre la dictée et ce qui a été dit est une erreur de la dictée, jamais une correction. La dictée déforme surtout les noms propres (prénom, nom, lieux, titres d'œuvres) : ne les corrige jamais.
 - Ne signale une erreur de langue que si elle est plausiblement de l'orateur (préposition ou élision manquante, phrase sans verbe, mot lourd ou rare, redondance, phrase trop longue). Mets aVerifier à true si tu n'en es pas sûr.
+- Langue : relève aussi un connecteur qui ne suit pas la logique (« par conséquent » devant une cause, « en effet » employé pour « en fait »), une répétition qu'un pronom aurait évitée (dont, en, y, celui, celle), un mot passe-partout (faire, mettre, avoir, il y a, chose, truc) quand un mot précis existe, et une erreur de genre ou d'accord qui s'entend.
 
 Principes de coaching (méthode A. Zakhnouf et N. Mel), à appliquer sans les réciter :
 - La légitimité est une situation, pas un titre : un public est là, une invitation ou un message existe.
@@ -71,7 +73,10 @@ const int = (description) => ({ type: 'integer', description });
 const arr = (items) => ({ type: 'array', items });
 const obj = (properties) => ({ type: 'object', additionalProperties: false, properties, required: Object.keys(properties) });
 
-export const CATEGORIES = ['préposition ou élision', 'phrase incomplète', 'mot lourd ou rare', 'redondance', 'phrase trop longue', 'registre', 'tic de langage', 'structure', 'autre'];
+export const CATEGORIES = [
+  'préposition ou élision', 'phrase incomplète', 'mot lourd ou rare', 'redondance', 'phrase trop longue', 'registre', 'tic de langage', 'structure',
+  'connecteur', 'pronom relatif', 'pronom démonstratif', 'pronom en ou y', 'mot passe-partout', 'genre ou accord', 'autre',
+];
 
 const RECIT = arr(obj({ dit: str, fiche: str }));
 const GARDES = arr(obj({ type: { type: 'string', enum: GARDE_FOUS }, citation: str }));
@@ -239,6 +244,30 @@ Sois franc : une prise plate est « neutre ».
 
 ${RULES}`;
   return ask(key, system, [{ text: `Phrase prononcée : « ${phrase} »` }, ...audioPart(audio)], INTENTION_SCHEMA, 'low');
+}
+
+const VERIF_SCHEMA = obj({
+  reussi: { type: 'boolean' },
+  entendu: { type: 'string', description: "La phrase dite, mot pour mot, d'après l'audio s'il est joint." },
+  correction: { type: 'string', description: 'La phrase correcte la plus proche de ce qui a été dit. Vide si réussi.' },
+  regle: { type: 'string', description: 'La règle, en une phrase. Vide si réussi.' },
+  categorie: { type: 'string', enum: CATEGORIES },
+});
+
+// Atelier langue : une phrase dite à voix haute, jugée sur la tâche demandée.
+export function verifierPhrase(key, phrase, prise, audio = null) {
+  const system = `Tu es professeur de français oral. Tu vérifies une seule phrase dite à voix haute dans un exercice.
+- Réussi si la phrase dite est correcte à l'oral, garde le sens de la donnée et remplit la tâche. Accepte toute variante correcte (ordre des mots, synonyme, autre découpage). Seul un connecteur imposé doit être présent tel quel.
+- Si l'audio est joint, il fait foi. La dictée confond des mots qui se prononcent pareil (« dont » et « don », « en » et « an ») : ce n'est jamais une erreur de l'orateur.
+- Ne juge ni l'accent ni la prononciation, sauf si elle change le mot (« que » au lieu de « dont »).
+- Si c'est raté : correction est la phrase correcte la plus proche de ce qui a été dit, regle tient en une phrase, categorie nomme l'erreur.
+
+${RULES}`;
+  const user = `Tâche : ${TYPES[phrase.type].consigne}
+Donnée : ${phrase.donnee.map((d) => `« ${d} »`).join(' ')}
+${phrase.type === 'relier' ? `Connecteur imposé : « ${phrase.joint} »\n` : ''}${phrase.indice ? `Indice donné : ${phrase.indice}\n` : ''}${phrase.attendus.length ? `Réponses modèles : ${phrase.attendus.map((a) => `« ${a} »`).join(' ')}\n` : ''}${audio ? 'Audio joint ci-après.' : "Pas d'audio."}
+Dictée du navigateur : « ${prise.transcript || '(vide)'} »`;
+  return ask(key, system, [{ text: user }, ...audioPart(audio)], VERIF_SCHEMA, 'low');
 }
 
 // answers : [{question, reponse}], takes : [{titre, transcript, metrics, audio}], drills : [{id, titre, cible}]

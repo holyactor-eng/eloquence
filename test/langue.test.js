@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  plus, normaliser, correspond, decouper, ajouterAuCarnet, apresRevision, retirer, aReviser, versCarnet, entreAuCarnet,
+  CATEGORIES_CARNET, plus, normaliser, correspond, decouper, ajouterAuCarnet, apresRevision, retirer, aReviser, versCarnet, entreAuCarnet,
   noterPhrase, ficheCourante, etatFiches, seanceDuJour, erreursParCategorie, tauxAtelier,
 } from '../langue.js';
 
@@ -121,4 +121,10 @@ test("Ma langue : erreurs de langue par période de 14 jours, réussite de l'ate
   ];
   assert.deepEqual(erreursParCategorie(sessions, J), [['connecteur', { recent: 2, avant: 1 }], ['pronom relatif', { recent: 0, avant: 1 }]]);
   assert.deepEqual(tauxAtelier(sessions, J), { reussies: 2, total: 3 });
+});
+
+test('les catégories du carnet existent toutes chez le coach', async () => {
+  const { CATEGORIES, verifierPhrase } = await import('../coach.js');
+  for (const c of CATEGORIES_CARNET) assert.ok(CATEGORIES.includes(c), c);
+  assert.equal(typeof verifierPhrase, 'function');
 });
