@@ -1,6 +1,6 @@
 import { LECONS, ECHAUFFEMENTS, SITUATIONS, QUESTIONNAIRE, TEST, PILIERS, SUJETS, PHRASES, MOTS, FINS_DE_PHRASE, INTENTIONS, PHRASES_INTENTION } from './content.js';
 import { FICHES, CONNECTEURS } from './fiches.js';
-import { TYPES, correspond, decouper, normaliser, ajouterAuCarnet, apresRevision, retirer, aReviser, versCarnet, noterPhrase, ficheCourante, etatFiches, seanceDuJour, erreursParCategorie, tauxAtelier } from './langue.js';
+import { TYPES, aParle, correspond, decouper, normaliser, ajouterAuCarnet, apresRevision, retirer, aReviser, versCarnet, noterPhrase, ficheCourante, etatFiches, seanceDuJour, erreursParCategorie, tauxAtelier } from './langue.js';
 import { analyze, dureeSouffle, noteSouffle } from './metrics.js';
 import { startRecording, canTranscribe, toWavBase64, decodeMono, wavOctets, SILENCE_RMS } from './recorder.js';
 import { feedback, diagnose, speak, intention, verifierPhrase } from './coach.js';
@@ -1316,10 +1316,12 @@ function seanceLangue() {
   const jour = jourJ();
   const file = seanceDuJour(FICHES, get('langue', {}), get('carnet', []), jour);
   const resultats = [];
-  let i = 0, rec = null, minuteur = null, prise = null;
-  cleanup = () => { clearTimeout(minuteur); rec?.stop(); rec = null; };
+  let i = 0, rec = null, minuteur = null, prise = null, actif = true;
+  // Quitter la séance : les attentes en cours (micro, dictée, coach) ne doivent plus rien dessiner ni enregistrer.
+  cleanup = () => { actif = false; clearTimeout(minuteur); rec?.stop(); rec = null; };
 
   const cadre = (corps) => {
+    if (!actif) return;
     const p = file[i];
     show(`
       <a class="back" href="#/langue">Atelier langue</a>
@@ -1349,6 +1351,7 @@ function seanceLangue() {
       rec = null;
       return cadre(`<p class="error">${t(micErr(err))}</p><div class="actions"><button class="btn primary" data-act="dire">Réessayer</button></div>`);
     }
+    if (!actif) { rec.stop(); rec = null; return; }
     const t0 = Date.now();
     const tic = () => {
       const s = (Date.now() - t0) / 1000;
@@ -1370,13 +1373,15 @@ function seanceLangue() {
   };
 
   const juger = async () => {
+    if (!actif) return;
     const p = file[i];
-    if (!prise.transcript && !prise.blob) return cadre(`<p class="error">Je n'ai rien entendu. Rapproche le téléphone et redis la phrase.</p><div class="actions"><button class="btn primary" data-act="dire">Redire</button></div>`);
+    if (!aParle(prise)) return cadre(`<p class="error">Je n'ai rien entendu. Rapproche le téléphone et redis la phrase.</p><div class="actions"><button class="btn primary" data-act="dire">Redire</button></div>`);
     if (correspond(prise.transcript, p.attendus)) return resultat({ reussi: true, entendu: p.attendus[0] });
     const key = get('key');
     if (!key) return autoEval();
     try {
-      resultat(await verifierPhrase(key, p, prise, await wav(prise.blob)));
+      const v = await verifierPhrase(key, p, prise, await wav(prise.blob));
+      if (actif) resultat(v);
     } catch (e) {
       cadre(`<p class="error">${t(errMsg(e))}</p><div class="actions"><button class="btn primary" data-act="auto">Juger moi-même</button><button class="btn" data-act="dire">Redire</button></div>`);
     }

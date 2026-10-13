@@ -30,6 +30,9 @@ export function plus(jour, n) {
 
 export const normaliser = (s = '') => s.toLowerCase().replace(/’/g, "'").replace(/[-.,;:!?«»"()…]/g, ' ').replace(/\s+/g, ' ').trim();
 
+// Une prise a-t-elle de la voix ? Un micro muet donne quand même un fichier audio : on regarde la dictée et le niveau sonore.
+export const aParle = (prise) => Boolean(normaliser(prise.transcript)) || prise.speechEnd > 0;
+
 // La dictée correspond-elle à une réponse attendue ? Un « oui » en tête ne compte pas.
 export function correspond(dit, attendus) {
   const sansOui = (s) => normaliser(s).replace(/^oui /, '');

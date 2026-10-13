@@ -254,20 +254,27 @@ const VERIF_SCHEMA = obj({
   categorie: { type: 'string', enum: CATEGORIES },
 });
 
+// Types où le mot du joint est exigé. En « préciser », tout verbe précis convient.
+const MOT_IMPOSE = ['relier', 'fusionner', 'remplacer'];
+
+// Message envoyé au coach pour une phrase d'atelier.
+export function consignePhrase(phrase, prise, audio) {
+  return `Tâche : ${TYPES[phrase.type].consigne}
+Donnée : ${phrase.donnee.map((d) => `« ${d} »`).join(' ')}
+${MOT_IMPOSE.includes(phrase.type) ? `Mot obligatoire dans la réponse : « ${phrase.joint} ». Une réponse correcte qui ne l'emploie pas est fausse.\n` : ''}${phrase.indice ? `Indice donné : ${phrase.indice}\n` : ''}${phrase.attendus.length ? `Réponses modèles : ${phrase.attendus.map((a) => `« ${a} »`).join(' ')}\n` : ''}${audio ? 'Audio joint ci-après.' : "Pas d'audio."}
+Dictée du navigateur : « ${prise.transcript || '(vide)'} »`;
+}
+
 // Atelier langue : une phrase dite à voix haute, jugée sur la tâche demandée.
 export function verifierPhrase(key, phrase, prise, audio = null) {
   const system = `Tu es professeur de français oral. Tu vérifies une seule phrase dite à voix haute dans un exercice.
-- Réussi si la phrase dite est correcte à l'oral, garde le sens de la donnée et remplit la tâche. Accepte toute variante correcte (ordre des mots, synonyme, autre découpage). Seul un connecteur imposé doit être présent tel quel.
+- Réussi si la phrase dite est correcte à l'oral, garde le sens de la donnée et remplit la tâche. Accepte toute variante correcte (ordre des mots, synonyme, autre découpage). Seul le mot obligatoire indiqué doit être présent tel quel : une phrase correcte qui ne l'emploie pas est fausse.
 - Si l'audio est joint, il fait foi. La dictée confond des mots qui se prononcent pareil (« dont » et « don », « en » et « an ») : ce n'est jamais une erreur de l'orateur.
 - Ne juge ni l'accent ni la prononciation, sauf si elle change le mot (« que » au lieu de « dont »).
 - Si c'est raté : correction est la phrase correcte la plus proche de ce qui a été dit, regle tient en une phrase, categorie nomme l'erreur.
 
 ${RULES}`;
-  const user = `Tâche : ${TYPES[phrase.type].consigne}
-Donnée : ${phrase.donnee.map((d) => `« ${d} »`).join(' ')}
-${phrase.type === 'relier' ? `Connecteur imposé : « ${phrase.joint} »\n` : ''}${phrase.indice ? `Indice donné : ${phrase.indice}\n` : ''}${phrase.attendus.length ? `Réponses modèles : ${phrase.attendus.map((a) => `« ${a} »`).join(' ')}\n` : ''}${audio ? 'Audio joint ci-après.' : "Pas d'audio."}
-Dictée du navigateur : « ${prise.transcript || '(vide)'} »`;
-  return ask(key, system, [{ text: user }, ...audioPart(audio)], VERIF_SCHEMA, 'low');
+  return ask(key, system, [{ text: consignePhrase(phrase, prise, audio) }, ...audioPart(audio)], VERIF_SCHEMA, 'low');
 }
 
 // answers : [{question, reponse}], takes : [{titre, transcript, metrics, audio}], drills : [{id, titre, cible}]

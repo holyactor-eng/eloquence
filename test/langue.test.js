@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  CATEGORIES_CARNET, plus, normaliser, correspond, decouper, ajouterAuCarnet, apresRevision, retirer, aReviser, versCarnet, entreAuCarnet,
+  CATEGORIES_CARNET, aParle, plus, normaliser, correspond, decouper, ajouterAuCarnet, apresRevision, retirer, aReviser, versCarnet, entreAuCarnet,
   noterPhrase, ficheCourante, etatFiches, seanceDuJour, erreursParCategorie, tauxAtelier,
 } from '../langue.js';
 
@@ -128,4 +128,19 @@ test('les catégories du carnet existent toutes chez le coach', async () => {
   const { CATEGORIES, verifierPhrase } = await import('../coach.js');
   for (const c of CATEGORIES_CARNET) assert.ok(CATEGORIES.includes(c), c);
   assert.equal(typeof verifierPhrase, 'function');
+});
+
+test("aParle : une prise muette n'est pas une phrase ratée", () => {
+  assert.equal(aParle({ transcript: '', speechEnd: 0 }), false);
+  assert.equal(aParle({ transcript: '   ', speechEnd: 0 }), false);
+  assert.equal(aParle({ transcript: '', speechEnd: 2.4 }), true); // pas de dictée, mais la voix a été entendue
+  assert.equal(aParle({ transcript: "j'y vais", speechEnd: 0 }), true);
+});
+
+test('vérification : le mot imposé est exigé pour relier, fusionner et remplacer, pas pour préciser ni couper', async () => {
+  const { consignePhrase } = await import('../coach.js');
+  const base = { donnee: ['A.'], attendus: ['B.'] };
+  for (const type of ['relier', 'fusionner', 'remplacer']) assert.match(consignePhrase({ ...base, type, joint: 'dont' }, { transcript: 'x' }, null), /obligatoire[^]*« dont »/, type);
+  assert.doesNotMatch(consignePhrase({ ...base, type: 'preciser', joint: 'animé|conduit' }, { transcript: 'x' }, null), /obligatoire/);
+  assert.doesNotMatch(consignePhrase({ ...base, type: 'couper', joint: null, attendus: [] }, { transcript: 'x' }, null), /obligatoire/);
 });
