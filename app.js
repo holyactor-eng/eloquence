@@ -565,7 +565,7 @@ function sessionView(id) {
     <h1>${t(s.titre)}</h1>
     <p class="muted">${dateFr(s.date)}</p>
     ${audios.has(s.id) ? `<p><audio controls src="${audios.get(s.id).url}" style="width:100%"></audio></p>` : ''}
-    ${s.souffle ? `${palier(s.note)}<p>Expirations : ${s.souffle.map((d) => `${nf(d)} s`).join(', ')}.</p>` : s.aveugle ? `<ul>${s.aveugle.map((x) => `<li>${x.note ? `${x.note}. ` : ''}Voulu : ${t(nomIntention(x.voulu))}. Entendu : ${t(nomIntention(x.entendu))}.</li>`).join('')}</ul>`
+    ${s.langue ? `${chaine(s.langue.map((r) => ({ texte: r.reussi ? 'juste' : 'à reprendre', joint: r.reussi })))}<ul>${s.langue.map((r) => `<li>${r.reussi ? 'Juste' : 'À reprendre'} : « ${t(r.dit || '(rien entendu)')} »</li>`).join('')}</ul>` : s.souffle ? `${palier(s.note)}<p>Expirations : ${s.souffle.map((d) => `${nf(d)} s`).join(', ')}.</p>` : s.aveugle ? `<ul>${s.aveugle.map((x) => `<li>${x.note ? `${x.note}. ` : ''}Voulu : ${t(nomIntention(x.voulu))}. Entendu : ${t(nomIntention(x.entendu))}.</li>`).join('')}</ul>`
       : s.intonation ? `<ul>${s.intonation.map((x) => (typeof x === 'number' ? { chute: x } : x)).map((x) => `<li>${x.note ? `${x.note}. ` : ''}Ta voix a commencé à descendre ${nf(x.chute)} s avant la fin.</li>`).join('')}</ul>`
       : mesures(s.metrics)}
     ${s.manuel && !s.transcript ? '' : `<h2>Notes du coach</h2>${fb}`}
@@ -1239,7 +1239,7 @@ const jourJ = () => new Date().toLocaleDateString('sv');
 const DUREE_PHRASE = 20; // secondes, arrêt automatique
 
 function langue(arg) {
-  if (arg === 'seance') return typeof seanceLangue === 'function' ? seanceLangue() : (location.hash = '#/langue');
+  if (arg === 'seance') return seanceLangue();
   if (arg) return ficheLangue(Number(arg));
   const l = get('langue', {}), carnet = get('carnet', []);
   const nbRev = aReviser(carnet, jourJ()).length;
@@ -1258,7 +1258,7 @@ function langue(arg) {
     <ol class="mosaique">${etatFiches(FICHES, l).map((e) => `
       <li><a class="tuile ${e.statut === 'acquise' ? 'fait' : ''} ${e.statut === 'en cours' ? 'suivante' : ''}" data-p="langue" href="#/langue/${e.n}">
         <span class="tete-tuile"><b class="num">${String(e.n).padStart(2, '0')}</b></span>
-        <span><span class="nom">${t(e.titre)}</span><span class="duree">${e.faites}/${e.total}${e.statut === 'vue' ? ' · au carnet' : ''}</span></span>
+        <span><span class="nom">${t(e.titre)}</span><span class="duree">${e.faites}/${e.total}${e.statut === 'vue' ? ' · à reprendre' : ''}</span></span>
       </a></li>`).join('')}
     </ol>
     <h2>Le carnet</h2>
@@ -1290,8 +1290,148 @@ function ficheLangue(n) {
     ${f.cartes.map((c) => `<div class="carte"><h3>${t(c.titre)}</h3><p>${motsJoints(c.texte)}</p></div>`).join('')}
     ${CONNECTEURS.filter((c) => c.fiche === f.n).map((c) => `<div class="carte"><h3>${t(c.relation)}</h3>${chaine(c.mots.map((m) => ({ texte: m, joint: true })))}<p class="small">${t(c.piege)}</p></div>`).join('')}
     <h2>Les phrases</h2>
-    <ul class="plain">${f.phrases.map((p) => `<li class="row-link"><span class="title">${t(p.donnee.join(' '))}</span><span class="meta">${l.faits?.[p.id] ? 'réussie' : l.vus?.[p.id] ? 'au carnet' : 'à venir'}</span></li>`).join('')}</ul>
+    <ul class="plain">${f.phrases.map((p) => `<li class="row-link"><span class="title">${t(p.donnee.join(' '))}</span><span class="meta">${l.faits?.[p.id] ? 'réussie' : l.vus?.[p.id] ? 'à reprendre' : 'à venir'}</span></li>`).join('')}</ul>
     <div class="actions"><a class="btn primary" href="#/langue/seance">Commencer la séance</a></div>`);
+}
+
+// Une séance : chaque phrase se dit, se vérifie (réponse attendue, sinon coach, sinon toi), puis s'affiche en blocs.
+function seanceLangue() {
+  const jour = jourJ();
+  const file = seanceDuJour(FICHES, get('langue', {}), get('carnet', []), jour);
+  const resultats = [];
+  let i = 0, rec = null, minuteur = null, prise = null;
+  cleanup = () => { clearTimeout(minuteur); rec?.stop(); rec = null; };
+
+  const cadre = (corps) => {
+    const p = file[i];
+    show(`
+      <a class="back" href="#/langue">Atelier langue</a>
+      <p class="mono muted">PHRASE ${i + 1}/${file.length} · ${p.type === 'corriger' ? 'CARNET' : `FICHE ${p.fiche}`}</p>
+      <section class="atelier">
+        <p class="bande">${t(TYPES[p.type].titre)}</p>
+        <p class="didascalie">${t(TYPES[p.type].consigne)}</p>
+        ${chaine(p.donnee.map((d) => ({ texte: d })))}
+        ${p.type === 'relier' ? `<div class="avec"><span class="small">Avec</span>${chaine([{ texte: p.joint, joint: true }])}</div>` : ''}
+        ${p.indice ? `<p class="small">Indice : ${t(p.indice)}</p>` : ''}
+        ${corps}
+      </section>`).onclick = agir;
+  };
+
+  const poser = () => {
+    if (i >= file.length) return fin();
+    prise = null;
+    cadre('<div class="actions"><button class="btn primary" data-act="dire">Dire</button></div>');
+  };
+
+  const dire = async () => {
+    cadre(`<p class="mono" id="chrono">0:00 / 0:${DUREE_PHRASE}</p><p class="small muted" id="dicte" aria-live="polite"></p>
+      <div class="actions"><button class="btn primary" data-act="stop">Arrêter</button></div>`);
+    try {
+      rec = await startRecording({ onTranscript: (txt) => { const el = document.getElementById('dicte'); if (el) el.textContent = txt; } });
+    } catch (err) {
+      rec = null;
+      return cadre(`<p class="error">${t(micErr(err))}</p><div class="actions"><button class="btn primary" data-act="dire">Réessayer</button></div>`);
+    }
+    const t0 = Date.now();
+    const tic = () => {
+      const s = (Date.now() - t0) / 1000;
+      const el = document.getElementById('chrono');
+      if (el) el.textContent = `${mmss(s)} / 0:${DUREE_PHRASE}`;
+      if (s >= DUREE_PHRASE) arreter(); else minuteur = setTimeout(tic, 250);
+    };
+    tic();
+  };
+
+  const arreter = async () => {
+    clearTimeout(minuteur);
+    if (!rec) return;
+    const r = rec;
+    rec = null;
+    cadre(attente('Je vérifie ta phrase.'));
+    prise = await r.stop();
+    juger();
+  };
+
+  const juger = async () => {
+    const p = file[i];
+    if (!prise.transcript && !prise.blob) return cadre(`<p class="error">Je n'ai rien entendu. Rapproche le téléphone et redis la phrase.</p><div class="actions"><button class="btn primary" data-act="dire">Redire</button></div>`);
+    if (correspond(prise.transcript, p.attendus)) return resultat({ reussi: true, entendu: p.attendus[0] });
+    const key = get('key');
+    if (!key) return autoEval();
+    try {
+      resultat(await verifierPhrase(key, p, prise, await wav(prise.blob)));
+    } catch (e) {
+      cadre(`<p class="error">${t(errMsg(e))}</p><div class="actions"><button class="btn primary" data-act="auto">Juger moi-même</button><button class="btn" data-act="dire">Redire</button></div>`);
+    }
+  };
+
+  const autoEval = () => {
+    const p = file[i];
+    cadre(`<p>Tu as dit : « ${t(prise.transcript || '(dictée vide)')} »</p>
+      ${p.attendus.length ? `<p class="small">Réponse attendue :</p>${chaine(decouper(p.attendus[0], p.joint))}` : '<p class="small">Vérifie : deux ou trois phrases de quinze mots au plus, et le même sens.</p>'}
+      <div class="actions"><button class="btn primary" data-act="oui">J'ai dit ça</button><button class="btn" data-act="non">Pas tout à fait</button></div>`);
+  };
+
+  const resultat = (v) => {
+    const p = file[i], now = new Date().toISOString();
+    const dit = v.entendu || prise?.transcript || '';
+    const correct = v.correction || p.attendus[0] || '';
+    resultats.push({ id: p.id, type: p.type, reussi: v.reussi, dit });
+    let note = '';
+    if (p.type === 'corriger') {
+      const e = get('carnet', []).find((x) => x.id === p.carnet);
+      if (e) {
+        const apres = apresRevision(e, v.reussi, jour, now);
+        set('carnet', get('carnet', []).map((x) => (x.id === e.id ? apres : x)));
+        if (v.reussi && e.origine === 'atelier') set('langue', noterPhrase(get('langue', {}), e.source, true, now));
+        note = apres.sorti ? 'Trois réussites de suite : elle sort du carnet.' : v.reussi ? `Prochaine révision : ${dateFr(`${apres.prochaine}T12:00`)}.` : 'Elle revient demain.';
+      }
+    } else {
+      set('langue', noterPhrase(get('langue', {}), p.id, v.reussi, now));
+      if (!v.reussi) {
+        const avant = get('carnet', []);
+        const apres = ajouterAuCarnet(avant, { categorie: v.categorie || p.categorie, dit, correct, regle: v.regle || `Fiche ${p.fiche} : ${FICHES[p.fiche - 1].titre}.`, origine: 'atelier', source: p.id }, jour, now);
+        if (apres !== avant) { set('carnet', apres); note = 'Ajouté au carnet : elle revient demain.'; }
+      }
+    }
+    const suite = `<div class="actions"><button class="btn primary" data-act="suite">${i + 1 < file.length ? 'Phrase suivante' : 'Terminer'}</button></div>`;
+    if (v.reussi) return cadre(`${palier('OK', 'Juste.')}${chaine(decouper(dit, p.joint))}${note ? `<p class="small">${t(note)}</p>` : ''}${suite}`);
+    cadre(`${palier('Répéter', 'À reprendre.')}
+      <div class="correction langue">
+        <p class="dit">Tu as dit : « ${t(dit || '(rien entendu)')} »</p>
+        ${correct ? chaine(decouper(correct, p.joint)) : ''}
+        ${v.regle ? `<p class="regle">${t(v.regle)}</p>` : ''}
+      </div>
+      ${note ? `<p class="small">${t(note)}</p>` : ''}${suite}`);
+  };
+
+  const fin = () => {
+    if (!resultats.length) return (location.hash = '#/langue');
+    const ok = resultats.filter((r) => r.reussi).length;
+    saveSession({
+      id: crypto.randomUUID(), date: new Date().toISOString(), exId: 'atelier-langue', titre: 'Atelier langue', origine: 'Atelier langue',
+      retour: '#/langue', refaire: '#/langue/seance', consigne: '', transcript: '', metrics: analyze({}), feedback: null, manuel: true, langue: resultats,
+    });
+    const ouverts = get('carnet', []).filter((e) => !e.sorti).length;
+    show(`
+      <a class="back" href="#/langue">Atelier langue</a>
+      <h1>${ok} sur ${resultats.length}.</h1>
+      ${chaine(resultats.map((r) => ({ texte: r.reussi ? 'juste' : 'à reprendre', joint: r.reussi })))}
+      <p>${ouverts} erreur${ouverts > 1 ? 's' : ''} dans ton carnet.</p>
+      <div class="actions"><a class="btn primary" href="#/langue">Terminer</a></div>`);
+  };
+
+  function agir(e) {
+    const act = e.target.closest('[data-act]')?.dataset.act;
+    if (act === 'dire') dire();
+    if (act === 'stop') arreter();
+    if (act === 'auto') autoEval();
+    if (act === 'oui') resultat({ reussi: true, entendu: prise.transcript || file[i].attendus[0] });
+    if (act === 'non') resultat({ reussi: false, entendu: prise.transcript });
+    if (act === 'suite') { i += 1; poser(); }
+  }
+
+  poser();
 }
 
 /* ---------- Réglages ---------- */
