@@ -64,7 +64,7 @@ Catégories qui alimentent le carnet : préposition ou élision, phrase incompl
 
 ### Connecteurs (fiches 1 et 2)
 
-Choisis pour l'oral. « et », « mais », « parce que », « alors » ne sont pas travaillés.
+Choisis pour l'oral : 35 connecteurs. « et », « mais », « parce que », « alors » ne sont pas travaillés.
 
 | Fiche | Relation | Connecteurs | Piège enseigné |
 |---|---|---|---|
@@ -113,7 +113,7 @@ Dans le texte des cartes, `{dont}` marque un mot à afficher en bloc turquoise (
 ## Identité visuelle
 
 - Couleur réservée : turquoise `#40e0d0` (`--langue`), texte noir dessus. Aucun pilier ne l'utilise.
-- Le lundi de la série passe de firouzeh à golbehi (`#f7a8b8`), pour que le turquoise reste réservé à l'atelier.
+- Le lundi de la série passe de firouzeh à golbehi (`#f7a8b8`), pour que le turquoise reste réservé à l'atelier. Les formes Memphis des leçons perdent aussi le turquoise, remplacé par golbehi.
 - Motif du joint (`.chaine`) : une rangée de blocs bordés de 3 px, collés ; le mot travaillé (`.joint`) en turquoise. Sur un fond turquoise, le joint s'inverse : fond noir, texte turquoise.
 - Bloc « Atelier langue » sur Aujourd'hui : fond turquoise, bordure 3 px, en-tête en Space Mono (« ATELIER LANGUE · 5 MIN »), titre (« 4 révisions, fiche 3 »), chaîne de l'emblème de la fiche en cours, bouton noir « Commencer l'atelier ».
 - Onglet « Langue » : turquoise quand il est actif, au lieu du noir.
@@ -126,7 +126,7 @@ Dans le texte des cartes, `{dont}` marque un mot à afficher en bloc turquoise (
 |---|---|
 | `#/` | bloc « Atelier langue » entre la leçon et les échauffements |
 | `#/langue` | titre et motif ; séance du jour et bouton « Commencer » ; mosaïque des 7 fiches (acquise turquoise, en cours noire, à venir blanche) ; carnet : entrées à revoir, sorties, liste avec « Tu as dit / On dit », prochaine révision, compteur ■□□, bouton « Retirer » |
-| `#/langue/fiche/n` | cartes de règle de la fiche, liste de ses phrases et leur état |
+| `#/langue/n` | cartes de règle de la fiche, liste de ses phrases et leur état |
 | `#/langue/seance` | la séance, phrase par phrase, puis le résumé |
 | `#/progres` | section « Ma langue » : erreurs par catégorie sur les 14 derniers jours et les 14 précédents, taux de réussite de l'atelier, état du carnet |
 | `#/session/:id` | pour une séance d'atelier : la liste des phrases et leur résultat |
