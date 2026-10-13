@@ -33,6 +33,8 @@ const esc = (s = '') => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<
 // Espaces insécables de la typographie française.
 const typo = (s) => s.replace(/« /g, '« ').replace(/ »/g, ' »').replace(/ ([:;!?])/g, ' $1');
 const t = (s) => typo(esc(s));
+// Les ids et les liens d'une séance viennent de données importées ou synchronisées : jamais de HTML ni de « javascript: ».
+const lien = (h, defaut = '#/') => (typeof h === 'string' && h.startsWith('#/') ? esc(h) : defaut);
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const fill = (s) => s.replace('{sujet}', pick(SUJETS)).replace('{phrase}', pick(PHRASES));
 const day = (iso) => new Date(iso).toLocaleDateString('sv');
@@ -138,7 +140,7 @@ function mesures(m) {
 // Atelier langue : des mots en blocs collés, le joint (le mot travaillé) en turquoise.
 const chaine = (segments) => `<span class="chaine">${segments.map((s) => `<span class="${s.joint ? 'joint' : ''}">${t(s.texte)}</span>`).join('')}</span>`;
 const motsJoints = (texte) => t(texte).replace(/\{(.+?)\}/g, '<b class="mot-joint">$1</b>');
-const compteur = (n) => `<span class="compteur" role="img" aria-label="${n} réussite${n > 1 ? 's' : ''} sur 3">${[0, 1, 2].map((i) => `<i class="${i < n ? 'plein' : ''}"></i>`).join('')}</span>`;
+const compteur = (n) => { n = Math.max(0, Math.min(3, Number(n) || 0)); return `<span class="compteur" role="img" aria-label="${n} réussite${n > 1 ? 's' : ''} sur 3">${[0, 1, 2].map((i) => `<i class="${i < n ? 'plein' : ''}"></i>`).join('')}</span>`; };
 const embleme = (f) => chaine([{ texte: f.embleme[0] }, { texte: f.embleme[1], joint: true }, { texte: f.embleme[2] }]);
 
 function notes(f, sessionId) {
@@ -161,7 +163,7 @@ function notes(f, sessionId) {
         <p class="regle">${t(c.regle)}</p>
         ${auCarnet.has(normaliser(c.dit)) ? `<p class="small"><span class="tag langue">${t(c.categorie)}</span>Au carnet</p>` : ''}
       </div>`).join('')}` : ''}
-    ${f.objection && sessionId ? `<h3>L'objection</h3><p class="didascalie">« ${t(f.objection)} »</p><a class="btn primary" href="#/objection/${sessionId}">Répondre à l'objection</a>` : ''}`;
+    ${f.objection && sessionId ? `<h3>L'objection</h3><p class="didascalie">« ${t(f.objection)} »</p><a class="btn primary" href="#/objection/${esc(sessionId)}">Répondre à l'objection</a>` : ''}`;
 }
 
 // Repère de réussite d'un exercice : OK, Moyen ou Répéter, avec sa raison.
@@ -564,7 +566,7 @@ function sessionView(id) {
   else fb = '<button class="btn primary" data-act="retry">Obtenir le retour du coach</button>';
 
   show(`
-    <a class="back" href="${s.retour ?? ex.retour ?? '#/progres'}">${t(s.origine)}</a>
+    <a class="back" href="${lien(s.retour ?? ex.retour, '#/progres')}">${t(s.origine)}</a>
     <h1>${t(s.titre)}</h1>
     <p class="muted">${dateFr(s.date)}</p>
     ${audios.has(s.id) ? `<p><audio controls src="${audios.get(s.id).url}" style="width:100%"></audio></p>` : ''}
@@ -574,8 +576,8 @@ function sessionView(id) {
     ${s.manuel && !s.transcript ? '' : `<h2>Notes du coach</h2>${fb}`}
     <details><summary>Consigne et transcription</summary><p class="didascalie">${t(s.consigne)}</p>${s.transcriptIA ? `<h3>Ce que le coach a entendu</h3><p>${t(s.transcriptIA)}</p><h3>Dictée du navigateur</h3>` : ''}<p>${t(s.transcript || '(vide)')}</p></details>
     <div class="actions">
-      ${s.refaire || ex.id ? `<a class="btn" href="${s.refaire ?? `#/exercice/${ex.id}`}">Recommencer</a>` : ''}
-      <a class="btn" href="${s.retour ?? ex.retour ?? '#/'}">Continuer</a>
+      ${s.refaire || ex.id ? `<a class="btn" href="${lien(s.refaire ?? `#/exercice/${ex.id}`)}">Recommencer</a>` : ''}
+      <a class="btn" href="${lien(s.retour ?? ex.retour)}">Continuer</a>
     </div>`);
   if (anim) cascade(app.querySelector('.revele'));
   app.onclick = (e) => {
@@ -1246,7 +1248,7 @@ function progres() {
     ${gardes.length ? `<h2>Garde-fous les plus fréquents</h2>${bars(gardes.map(([k, n]) => [k, n]), gardes[0][1])}` : ''}
     <div class="sep" aria-hidden="true"></div>
     <h2>Historique</h2>
-    ${all.length ? `<ul class="plain">${all.slice(0, 40).map((s) => `<li><a class="row-link" href="#/session/${s.id}"><span class="title">${t(s.titre)}</span><span class="meta">${dateFr(s.date)}${s.feedback ? ` · ${nf(mean(Object.values(s.feedback.scores)))}/10` : ''}</span></a></li>`).join('')}</ul>`
+    ${all.length ? `<ul class="plain">${all.slice(0, 40).map((s) => `<li><a class="row-link" href="#/session/${esc(s.id)}"><span class="title">${t(s.titre)}</span><span class="meta">${dateFr(s.date)}${s.feedback ? ` · ${nf(mean(Object.values(s.feedback.scores)))}/10` : ''}</span></a></li>`).join('')}</ul>`
       : `<div class="vide">${memphis(3, true)}<p class="muted">Aucune séance pour l'instant. Commence par <a href="#/">l'échauffement du jour</a>.</p></div>`}`);
 }
 
@@ -1285,7 +1287,7 @@ function langue(arg) {
         <p class="dit">Tu as dit : « ${t(e.dit)} »</p>
         <p class="prop">${t(e.correct)}</p>
         ${e.regle ? `<p class="regle">${t(e.regle)}</p>` : ''}
-        <p class="small">${compteur(e.reussites)}Prochaine révision : ${dateFr(`${e.prochaine}T12:00`)}. <button class="btn quiet" data-retirer="${e.id}">Retirer</button></p>
+        <p class="small">${compteur(e.reussites)}Prochaine révision : ${dateFr(`${e.prochaine}T12:00`)}. <button class="btn quiet" data-retirer="${esc(e.id)}">Retirer</button></p>
       </div>`).join('')
       : '<div class="vide"><p>Ton carnet est vide. Les erreurs relevées par le coach et celles de l\'atelier viendront s\'y ranger.</p></div>'}`).onclick = (ev) => {
     const id = ev.target.closest('[data-retirer]')?.dataset.retirer;
