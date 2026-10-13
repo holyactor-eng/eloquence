@@ -20,8 +20,10 @@ export function fusion(local, distant) {
   // Atelier langue : phrases vues et faites additionnées ; carnet fusionné entrée par entrée, la plus récente gagne.
   if (a.langue || b.langue) donnees.langue = { vus: { ...b.langue?.vus, ...a.langue?.vus }, faits: { ...b.langue?.faits, ...a.langue?.faits } };
   if (a.carnet || b.carnet) {
+    // Une entrée retirée l'est pour tous les appareils, même si un autre l'a révisée plus tard.
+    const gagnante = (x, y) => (Boolean(x.retire) !== Boolean(y.retire) ? (x.retire ? x : y) : y.maj > x.maj ? y : x);
     const entrees = new Map();
-    for (const e of [...(b.carnet ?? []), ...(a.carnet ?? [])]) if (!entrees.has(e.id) || e.maj > entrees.get(e.id).maj) entrees.set(e.id, e);
+    for (const e of [...(b.carnet ?? []), ...(a.carnet ?? [])]) entrees.set(e.id, entrees.has(e.id) ? gagnante(entrees.get(e.id), e) : e);
     donnees.carnet = [...entrees.values()];
   }
   return { donnees, majs };

@@ -60,3 +60,18 @@ test('carnet : fusion par entrée, la plus récente gagne, une entrée sortie ne
   assert.ok(par.c);
   assert.equal(r.donnees.carnet.length, 3);
 });
+
+test('carnet : une entrée retirée sur un appareil le reste, même si l\'autre la révise plus tard', () => {
+  const r = fusion(
+    { donnees: { carnet: [{ id: 'a', maj: '2026-10-13T12:00', sorti: null, reussites: 1 }] }, majs: {} },
+    { donnees: { carnet: [{ id: 'a', maj: '2026-10-13T09:00', sorti: '2026-10-13T09:00', retire: true }] }, majs: {} },
+  );
+  assert.equal(r.donnees.carnet.length, 1);
+  assert.deepEqual([r.donnees.carnet[0].retire, r.donnees.carnet[0].sorti], [true, '2026-10-13T09:00']);
+  // dans l'autre sens aussi (la version retirée est la locale)
+  const r2 = fusion(
+    { donnees: { carnet: [{ id: 'a', maj: '2026-10-13T09:00', sorti: '2026-10-13T09:00', retire: true }] }, majs: {} },
+    { donnees: { carnet: [{ id: 'a', maj: '2026-10-13T12:00', sorti: null, reussites: 1 }] }, majs: {} },
+  );
+  assert.equal(r2.donnees.carnet[0].retire, true);
+});

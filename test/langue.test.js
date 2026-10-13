@@ -144,3 +144,9 @@ test('vérification : le mot imposé est exigé pour relier, fusionner et rempla
   assert.doesNotMatch(consignePhrase({ ...base, type: 'preciser', joint: 'animé|conduit' }, { transcript: 'x' }, null), /obligatoire/);
   assert.doesNotMatch(consignePhrase({ ...base, type: 'couper', joint: null, attendus: [] }, { transcript: 'x' }, null), /obligatoire/);
 });
+
+test("versCarnet : rien à ajouter, c'est le même tableau (l'app n'écrit pas, donc ne synchronise pas)", () => {
+  const c = ajouterAuCarnet([], err(), J, T);
+  assert.equal(versCarnet(c, [], 's', J, T), c);
+  assert.equal(versCarnet(c, [{ categorie: 'tic de langage', dit: 'du coup', propositions: ['donc'], regle: 'r', aVerifier: false }], 's', J, T), c);
+});
