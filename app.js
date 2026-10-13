@@ -1,7 +1,9 @@
 import { LECONS, ECHAUFFEMENTS, SITUATIONS, QUESTIONNAIRE, TEST, PILIERS, SUJETS, PHRASES, MOTS, FINS_DE_PHRASE, INTENTIONS, PHRASES_INTENTION } from './content.js';
+import { FICHES, CONNECTEURS } from './fiches.js';
+import { TYPES, correspond, decouper, normaliser, ajouterAuCarnet, apresRevision, retirer, aReviser, versCarnet, noterPhrase, ficheCourante, etatFiches, seanceDuJour, erreursParCategorie, tauxAtelier } from './langue.js';
 import { analyze, dureeSouffle, noteSouffle } from './metrics.js';
 import { startRecording, canTranscribe, toWavBase64, decodeMono, wavOctets, SILENCE_RMS } from './recorder.js';
-import { feedback, diagnose, speak, intention } from './coach.js';
+import { feedback, diagnose, speak, intention, verifierPhrase } from './coach.js';
 import { contour, finDePhrase, hauteurTrame, noteFin } from './pitch.js';
 import { fusion, verifier, lire, ecrire } from './sync.js';
 
@@ -9,7 +11,7 @@ import { fusion, verifier, lire, ecrire } from './sync.js';
 
 const get = (k, d = null) => { try { return JSON.parse(localStorage.getItem('eloq.' + k)) ?? d; } catch { return d; } };
 // Données de l'utilisateur : exportées, importées et synchronisées. La clé API et le jeton de synchro n'en font pas partie.
-const DATA_KEYS = ['context', 'recit', 'profile', 'plan', 'progress', 'sessions', 'intonation', 'intentions', 'phrasePerso'];
+const DATA_KEYS = ['context', 'recit', 'profile', 'plan', 'progress', 'sessions', 'intonation', 'intentions', 'phrasePerso', 'langue', 'carnet'];
 function set(k, v) {
   localStorage.setItem('eloq.' + k, JSON.stringify(v));
   if (!DATA_KEYS.includes(k)) return;
@@ -71,7 +73,7 @@ function dessiner() {
   cleanup?.();
   cleanup = null;
   const [name = '', arg] = location.hash.replace(/^#\/?/, '').split('/');
-  const routes = { '': today, programme, lecon, exercice, objection, situations, progres, reglages, session: sessionView, test, intonation, intentions };
+  const routes = { '': today, programme, lecon, exercice, objection, situations, progres, reglages, session: sessionView, test, intonation, intentions, langue };
   (routes[name] ?? today)(arg && decodeURIComponent(arg));
   for (const a of document.querySelectorAll('[data-tab]')) {
     a.toggleAttribute('aria-current', a.dataset.tab === name);
@@ -255,6 +257,8 @@ function today() {
   const bilanDue = (Date.now() - new Date(last.date)) / 864e5 >= 14;
   const nonAnalyse = !last.analysis && get('key') && last.takes?.some((x) => x.transcript);
   const n = streak();
+  const ficheEnCours = ficheCourante(FICHES, get('langue', {}));
+  const nbRev = aReviser(get('carnet', []), jourJ()).length;
   const auj = JOURS[new Date().getDay()];
   show(`
     <p class="mono muted">${new Date().toLocaleDateString('sv')}</p>
@@ -274,6 +278,12 @@ function today() {
             <a class="btn primary" href="#/lecon/${next.n}">Ouvrir la leçon</a>
           </section>`
           : `<div class="vide">${memphis(0, true)}<h2>Les quinze leçons sont faites.</h2><p>Continue avec les <a href="#/situations">situations</a> et les échauffements.</p></div>`}
+        <section class="block langue">
+          <p class="mono">ATELIER LANGUE · 5 MIN</p>
+          <h2>${nbRev ? `${nbRev} révision${nbRev > 1 ? 's' : ''}, ` : ''}${ficheEnCours ? `fiche ${ficheEnCours.n}` : 'entretien'}</h2>
+          ${embleme(ficheEnCours ?? FICHES[0])}
+          <a class="btn primary" href="#/langue/seance">Commencer l'atelier</a>
+        </section>
         <div class="sep" aria-hidden="true"></div>
         <h2>Échauffements du jour</h2>
         <ul class="plain">${jour.map(ligne).join('')}</ul>
@@ -1223,6 +1233,67 @@ function progres() {
       : `<div class="vide">${memphis(3, true)}<p class="muted">Aucune séance pour l'instant. Commence par <a href="#/">l'échauffement du jour</a>.</p></div>`}`);
 }
 
+/* ---------- Atelier langue ---------- */
+
+const jourJ = () => new Date().toLocaleDateString('sv');
+const DUREE_PHRASE = 20; // secondes, arrêt automatique
+
+function langue(arg) {
+  if (arg === 'seance') return typeof seanceLangue === 'function' ? seanceLangue() : (location.hash = '#/langue');
+  if (arg) return ficheLangue(Number(arg));
+  const l = get('langue', {}), carnet = get('carnet', []);
+  const nbRev = aReviser(carnet, jourJ()).length;
+  const courante = ficheCourante(FICHES, l);
+  const ouverts = carnet.filter((e) => !e.sorti).sort((a, b) => a.prochaine.localeCompare(b.prochaine));
+  const sortis = carnet.filter((e) => e.sorti && !e.retire).length;
+  show(`
+    <h1>Atelier langue</h1>
+    ${chaine([{ texte: 'les mots' }, { texte: 'et', joint: true }, { texte: 'les liens' }])}
+    <section class="block langue">
+      <p class="mono">SÉANCE DU JOUR · 5 MIN</p>
+      <p>${nbRev ? `${nbRev} révision${nbRev > 1 ? 's' : ''} du carnet, puis ` : ''}3 phrases ${courante ? `de la fiche ${courante.n}` : 'au hasard parmi les fiches'}.</p>
+      <a class="btn primary" href="#/langue/seance">Commencer</a>
+    </section>
+    <h2>Les fiches</h2>
+    <ol class="mosaique">${etatFiches(FICHES, l).map((e) => `
+      <li><a class="tuile ${e.statut === 'acquise' ? 'fait' : ''} ${e.statut === 'en cours' ? 'suivante' : ''}" data-p="langue" href="#/langue/${e.n}">
+        <span class="tete-tuile"><b class="num">${String(e.n).padStart(2, '0')}</b></span>
+        <span><span class="nom">${t(e.titre)}</span><span class="duree">${e.faites}/${e.total}${e.statut === 'vue' ? ' · au carnet' : ''}</span></span>
+      </a></li>`).join('')}
+    </ol>
+    <h2>Le carnet</h2>
+    <p class="mono muted">${ouverts.length} À REVOIR · ${sortis} SORTIE${sortis > 1 ? 'S' : ''}</p>
+    ${ouverts.length ? ouverts.map((e) => `
+      <div class="correction langue">
+        <p class="dit">Tu as dit : « ${t(e.dit)} »</p>
+        <p class="prop">${t(e.correct)}</p>
+        ${e.regle ? `<p class="regle">${t(e.regle)}</p>` : ''}
+        <p class="small">${compteur(e.reussites)}Prochaine révision : ${dateFr(`${e.prochaine}T12:00`)}. <button class="btn quiet" data-retirer="${e.id}">Retirer</button></p>
+      </div>`).join('')
+      : '<div class="vide"><p>Ton carnet est vide. Les erreurs relevées par le coach et celles de l\'atelier viendront s\'y ranger.</p></div>'}`).onclick = (ev) => {
+    const id = ev.target.closest('[data-retirer]')?.dataset.retirer;
+    if (!id || !confirm('Retirer cette entrée du carnet ?')) return;
+    set('carnet', get('carnet', []).map((e) => (e.id === id ? retirer(e) : e)));
+    langue();
+  };
+}
+
+function ficheLangue(n) {
+  const f = FICHES.find((x) => x.n === n);
+  if (!f) return langue();
+  const l = get('langue', {});
+  show(`
+    <a class="back" href="#/langue">Atelier langue</a>
+    <p class="mono muted">FICHE ${String(f.n).padStart(2, '0')}/${FICHES.length}</p>
+    <h1>${t(f.titre)}</h1>
+    ${embleme(f)}
+    ${f.cartes.map((c) => `<div class="carte"><h3>${t(c.titre)}</h3><p>${motsJoints(c.texte)}</p></div>`).join('')}
+    ${CONNECTEURS.filter((c) => c.fiche === f.n).map((c) => `<div class="carte"><h3>${t(c.relation)}</h3>${chaine(c.mots.map((m) => ({ texte: m, joint: true })))}<p class="small">${t(c.piege)}</p></div>`).join('')}
+    <h2>Les phrases</h2>
+    <ul class="plain">${f.phrases.map((p) => `<li class="row-link"><span class="title">${t(p.donnee.join(' '))}</span><span class="meta">${l.faits?.[p.id] ? 'réussie' : l.vus?.[p.id] ? 'au carnet' : 'à venir'}</span></li>`).join('')}</ul>
+    <div class="actions"><a class="btn primary" href="#/langue/seance">Commencer la séance</a></div>`);
+}
+
 /* ---------- Réglages ---------- */
 
 /* ---------- Synchronisation entre appareils (dépôt GitHub privé) ---------- */
@@ -1274,8 +1345,9 @@ function synchroniser() {
       }
       localStorage.setItem('eloq.syncInfo', JSON.stringify({ date: new Date().toISOString() }));
       // Nouveautés venues de l'autre appareil : on rafraîchit les écrans qui ne sont pas en plein exercice.
-      const route = location.hash.replace(/^#\/?/, '').split('/')[0];
-      if (JSON.stringify(avant.donnees) !== JSON.stringify(fus.donnees) && ['', 'programme', 'lecon', 'progres', 'situations'].includes(route)) render();
+      const [route, arg] = location.hash.replace(/^#\/?/, '').split('/');
+      const calme = ['', 'programme', 'lecon', 'progres', 'situations'].includes(route) || (route === 'langue' && arg !== 'seance');
+      if (JSON.stringify(avant.donnees) !== JSON.stringify(fus.donnees) && calme) render();
       return;
     }
   })()
