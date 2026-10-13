@@ -116,6 +116,7 @@ test("Ma langue : erreurs de langue par période de 14 jours, réussite de l'ate
     s('2026-10-12T10:00:00', ['connecteur', 'connecteur', 'tic de langage']),
     s('2026-09-25T10:00:00', ['connecteur', 'pronom relatif']),
     s('2026-08-01T10:00:00', ['connecteur']),
+    { date: '2026-10-12T11:00:00', feedback: { corrections: [{ categorie: 'connecteur', aVerifier: true }] } }, // incertaine : ne compte pas
     { date: '2026-10-11T10:00:00', exId: 'atelier-langue', langue: [{ reussi: true }, { reussi: false }, { reussi: true }] },
     { date: '2026-09-01T10:00:00', exId: 'atelier-langue', langue: [{ reussi: false }] },
   ];

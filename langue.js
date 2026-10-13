@@ -145,7 +145,7 @@ export function erreursParCategorie(sessions, jour) {
     const periode = d >= debut ? 'recent' : d >= avant ? 'avant' : null;
     if (!periode) continue;
     for (const c of s.feedback.corrections) {
-      if (!CATEGORIES_CARNET.includes(c.categorie)) continue;
+      if (!CATEGORIES_CARNET.includes(c.categorie) || c.aVerifier) continue; // une correction incertaine n'est pas une erreur comptée
       res[c.categorie] ??= { recent: 0, avant: 0 };
       res[c.categorie][periode] += 1;
     }

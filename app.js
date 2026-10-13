@@ -143,6 +143,7 @@ const embleme = (f) => chaine([{ texte: f.embleme[0] }, { texte: f.embleme[1], j
 
 function notes(f, sessionId) {
   const s = f.scores;
+  const auCarnet = new Set(get('carnet', []).filter((e) => !e.sorti).map((e) => normaliser(e.dit)));
   return `
     ${palier(f.note, f.noteRaison)}
     <p class="verdict">${t(f.verdict)}</p>
@@ -154,10 +155,11 @@ function notes(f, sessionId) {
     ${f.axes.length ? `<h3>À travailler</h3><ul>${f.axes.map((x) => `<li>${t(x)}</li>`).join('')}</ul>` : ''}
     ${f.gardeFous.length ? `<h3>Garde-fous</h3>${f.gardeFous.map((g) => `<p><span class="tag">${t(g.type)}</span><i>« ${t(g.citation)} »</i></p>`).join('')}` : ''}
     ${f.corrections.length ? `<h3>Corrections</h3>${f.corrections.map((c) => `
-      <div class="correction">
+      <div class="correction ${auCarnet.has(normaliser(c.dit)) ? 'langue' : ''}">
         <p class="dit">Tu as dit : « ${t(c.dit)} »${c.aVerifier ? ' <span class="tag">à vérifier à la réécoute</span>' : ''}</p>
         ${c.propositions.map((p) => `<p class="prop">${t(p)}</p>`).join('')}
         <p class="regle">${t(c.regle)}</p>
+        ${auCarnet.has(normaliser(c.dit)) ? `<p class="small"><span class="tag langue">${t(c.categorie)}</span>Au carnet</p>` : ''}
       </div>`).join('')}` : ''}
     ${f.objection && sessionId ? `<h3>L'objection</h3><p class="didascalie">« ${t(f.objection)} »</p><a class="btn primary" href="#/objection/${sessionId}">Répondre à l'objection</a>` : ''}`;
 }
@@ -528,6 +530,7 @@ async function askFeedback(s) {
     const audio = await wav(audios.get(s.id)?.blob);
     s.feedback = await feedback(get('key'), { titre: s.titre, consigne: s.consigne, texte: ex.texte, criteres: s.criteres ?? ex.criteres }, s, perso(), audio);
     s.error = null;
+    set('carnet', versCarnet(get('carnet', []), s.feedback.corrections, s.id, jourJ()));
     // La transcription de Gemini garde les « euh » que la dictée efface : on recalcule les mesures avec elle.
     if (s.feedback.transcription) {
       s.transcriptIA = s.feedback.transcription;
@@ -1191,6 +1194,9 @@ function progres() {
   const gardes = count(fbs.flatMap((f) => f.gardeFous.map((g) => g.type)));
   const tpm = (s) => Math.round((10 * s.metrics.fillerCount) / Math.max(s.metrics.durationSec / 60, 0.5)) / 10;
   const first = profile?.analysis, latest = profile?.bilans?.at(-1)?.analysis;
+  const stats = erreursParCategorie(all, jourJ()), taux = tauxAtelier(all, jourJ());
+  const ouverts = get('carnet', []).filter((e) => !e.sorti).length;
+  const maxL = Math.max(1, ...stats.flatMap(([, v]) => [v.recent, v.avant]));
 
   const serie = (titre, values, opts) => `
     <div class="block"><div class="spark-head"><span>${t(titre)}</span><b>${values.length ? nf(values.at(-1)) + (opts?.unit ?? '') : ''}</b></div>${spark(values, opts)}</div>`;
@@ -1225,6 +1231,17 @@ function progres() {
       <p>${t((latest ?? first).synthese)}</p>
       <h3>Tes priorités</h3><ul>${(latest ?? first).priorites.map((x) => `<li>${t(x)}</li>`).join('')}</ul>
       <h3>Dans trente jours</h3><ul>${(latest ?? first).objectifs30j.map((x) => `<li>${t(x)}</li>`).join('')}</ul>` : ''}
+    <div class="sep" aria-hidden="true"></div>
+    <section class="ma-langue">
+      <h2>Ma langue</h2>
+      <div class="mesures">
+        <div class="mesure"><b>${taux.total ? `${taux.reussies}/${taux.total}` : '·'}</b><span>phrases justes à l'atelier, 14 jours</span></div>
+        <div class="mesure"><b>${ouverts}</b><span>erreur${ouverts > 1 ? 's' : ''} au carnet</span></div>
+      </div>
+      ${stats.length
+        ? `<div class="legend"><span><i style="background:var(--langue)"></i>14 derniers jours</span><span><i style="background:var(--modele)"></i>14 jours d'avant</span></div>${bars(stats.map(([k, v]) => [k, v.recent, v.avant]), maxL)}`
+        : '<p class="muted">Aucune erreur de langue relevée ces quatre dernières semaines.</p>'}
+    </section>
     ${cats.length ? `<h2>Corrections qui reviennent</h2>${bars(cats.map(([k, n]) => [k, n]), cats[0][1])}` : ''}
     ${gardes.length ? `<h2>Garde-fous les plus fréquents</h2>${bars(gardes.map(([k, n]) => [k, n]), gardes[0][1])}` : ''}
     <div class="sep" aria-hidden="true"></div>
