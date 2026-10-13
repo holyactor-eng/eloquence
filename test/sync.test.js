@@ -39,3 +39,24 @@ test('leçons faites additionnées entre appareils', () => {
   );
   assert.deepEqual(Object.keys(r.donnees.progress.lecons), ['1', '2', '3']);
 });
+
+test('atelier langue : phrases vues et faites additionnées entre appareils', () => {
+  const r = fusion(
+    { donnees: { langue: { vus: { a: '1' }, faits: { a: '1' } } }, majs: {} },
+    { donnees: { langue: { vus: { b: '2' }, faits: {} } }, majs: {} },
+  );
+  assert.deepEqual(r.donnees.langue, { vus: { a: '1', b: '2' }, faits: { a: '1' } });
+});
+
+test('carnet : fusion par entrée, la plus récente gagne, une entrée sortie ne revient pas', () => {
+  const e = (id, maj, o = {}) => ({ id, maj, sorti: null, ...o });
+  const r = fusion(
+    { donnees: { carnet: [e('a', '2026-10-13T10:00', { reussites: 1 }), e('b', '2026-10-12T10:00')] }, majs: {} },
+    { donnees: { carnet: [e('a', '2026-10-12T10:00', { reussites: 0 }), e('b', '2026-10-13T10:00', { sorti: '2026-10-13T10:00' }), e('c', '2026-10-11T10:00')] }, majs: {} },
+  );
+  const par = Object.fromEntries(r.donnees.carnet.map((x) => [x.id, x]));
+  assert.equal(par.a.reussites, 1);
+  assert.equal(par.b.sorti, '2026-10-13T10:00');
+  assert.ok(par.c);
+  assert.equal(r.donnees.carnet.length, 3);
+});

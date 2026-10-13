@@ -2,7 +2,8 @@
 // Un état = { donnees: { clé: valeur }, majs: { clé: date ISO de dernière modification } }.
 
 // Fusion de l'état de cet appareil (local) et de celui du dépôt (distant).
-// Séances : on additionne (même id : la version locale gagne). Leçons faites : on additionne.
+// Séances : on additionne (même id : la version locale gagne). Leçons faites et phrases d'atelier : on additionne.
+// Carnet : entrée par entrée, la plus récemment modifiée gagne.
 // Le reste : la clé modifiée en dernier gagne ; à égalité ou sans valeur locale, le dépôt gagne.
 export function fusion(local, distant) {
   const a = local.donnees, b = distant.donnees, donnees = {}, majs = {};
@@ -16,6 +17,13 @@ export function fusion(local, distant) {
   for (const s of [...(b.sessions ?? []), ...(a.sessions ?? [])]) seances.set(s.id, s);
   if (seances.size) donnees.sessions = [...seances.values()].sort((x, y) => y.date.localeCompare(x.date));
   if (a.progress || b.progress) donnees.progress = { ...b.progress, ...a.progress, lecons: { ...b.progress?.lecons, ...a.progress?.lecons } };
+  // Atelier langue : phrases vues et faites additionnées ; carnet fusionné entrée par entrée, la plus récente gagne.
+  if (a.langue || b.langue) donnees.langue = { vus: { ...b.langue?.vus, ...a.langue?.vus }, faits: { ...b.langue?.faits, ...a.langue?.faits } };
+  if (a.carnet || b.carnet) {
+    const entrees = new Map();
+    for (const e of [...(b.carnet ?? []), ...(a.carnet ?? [])]) if (!entrees.has(e.id) || e.maj > entrees.get(e.id).maj) entrees.set(e.id, e);
+    donnees.carnet = [...entrees.values()];
+  }
   return { donnees, majs };
 }
 
