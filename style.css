@@ -24,6 +24,7 @@
   --pilier-mental: #00a86b;
   --pilier-assertivite: #900020;
   --pilier-pratique: #4b0082;
+  --langue: #40e0d0;
   --gutter: 16px;
   --font: "Work Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --display: "Archivo Black", "Arial Black", Impact, sans-serif;
@@ -61,14 +62,14 @@ a:hover { background: var(--accent); color: #fff; text-decoration: none; }
 .top-link:hover, .top-link[aria-current] { background: #000; color: #fff; }
 .tabs {
   position: fixed; inset: auto 0 0 0; z-index: 10;
-  display: grid; grid-template-columns: repeat(4, 1fr);
+  display: grid; grid-template-columns: repeat(5, 1fr);
   background: var(--surface); border-top: 3px solid var(--line);
   padding-bottom: env(safe-area-inset-bottom);
 }
 .tabs a {
-  display: flex; align-items: center; justify-content: center; min-height: 60px; padding: 0 4px;
+  display: flex; align-items: center; justify-content: center; min-height: 60px; padding: 0 2px;
   color: var(--ink); text-decoration: none; text-align: center;
-  font-size: .65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+  font-size: .6rem; font-weight: 600; text-transform: uppercase; letter-spacing: .5px;
 }
 .tabs a + a { border-left: 3px solid var(--line); }
 .tabs a:hover, .tabs a[aria-current="page"] { background: #000; color: #fff; }
@@ -227,6 +228,26 @@ summary { cursor: pointer; font-size: .8rem; font-weight: 600; text-transform: u
 .mesure b { display: block; font: 700 1.75rem/1.1 var(--mono); font-variant-numeric: tabular-nums; }
 .mesure span { font-size: .85rem; color: var(--muted); }
 .mesure b.over { color: var(--rec); }
+
+/* Atelier langue : le turquoise lui est réservé. Des mots en blocs collés ; le joint, le mot travaillé, en turquoise. */
+[data-p="langue"] { --p: var(--langue); --pt: #000; }
+.chaine { display: flex; flex-wrap: wrap; margin: 12px 0; padding-left: 3px; }
+.chaine > span { max-width: 100%; margin: 0 0 -3px -3px; padding: 4px 10px; border: 3px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 600; }
+.chaine > .joint { background: var(--langue); color: #000; }
+.block.langue { background: var(--langue); }
+.block.langue h2 { margin: .2em 0 .3em; }
+.block.langue .chaine > .joint { background: #000; color: var(--langue); }
+.mot-joint { background: var(--langue); padding: 0 4px; font-weight: 600; }
+.tag.langue { background: var(--langue); }
+.correction.langue .prop { background: var(--langue); }
+.atelier { border: 3px solid var(--line); padding: 0 20px 20px; margin: 16px 0; }
+.atelier .bande { margin: 0 -20px 16px; padding: 8px 20px; background: var(--langue); border-bottom: 3px solid var(--line); font: 700 .8rem/1.2 var(--mono); text-transform: uppercase; letter-spacing: 2px; }
+.atelier .avec { display: flex; flex-wrap: wrap; align-items: center; gap: 0 12px; }
+.compteur { display: inline-flex; gap: 3px; margin-right: 8px; vertical-align: -1px; }
+.compteur i { width: 12px; height: 12px; border: 2px solid var(--line); }
+.compteur i.plein { background: var(--ink); }
+.ma-langue .bar > i:not(.ref) { background: var(--langue); }
+.tabs a[data-tab="langue"]:hover, .tabs a[data-tab="langue"][aria-current="page"] { background: var(--langue); color: #000; }
 
 /* Notes de Claude */
 .verdict { font: 400 clamp(1.4rem, 5.5vw, 1.8rem)/1.2 var(--display); margin: 12px 0 20px; }
@@ -401,7 +422,7 @@ textarea.court { min-height: 4.5em; }
   }
   .brand { font-size: 1.5rem; }
   .top-link { display: none; }
-  .tabs { inset: 0 0 auto auto; height: 72px; width: auto; grid-template-columns: repeat(5, auto); border-top: 0; z-index: 12; }
+  .tabs { inset: 0 0 auto auto; height: 72px; width: auto; grid-template-columns: repeat(6, auto); border-top: 0; z-index: 12; }
   .tabs a { padding: 0 28px; font-size: .75rem; letter-spacing: 2px; min-height: 0; }
   .tabs a.desk { display: flex; }
   main { padding: 40px; }

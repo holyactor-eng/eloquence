@@ -93,7 +93,7 @@ const PICTOS = {
 const picto = (k, s = 20) => `<svg class="picto" viewBox="0 0 72 72" width="${s}" height="${s}" fill="currentColor" aria-hidden="true">${PICTOS[k] ?? ''}</svg>`;
 
 // Composition géométrique : les couleurs tournent avec n, chaque leçon a la sienne.
-const MEMPHIS = ['#0047ab', '#f4c430', '#900020', '#00a86b', '#40e0d0', '#4b0082'];
+const MEMPHIS = ['#0047ab', '#f4c430', '#900020', '#00a86b', '#f7a8b8', '#4b0082'];
 const memphis = (n = 0, grand = false) => {
   const c = (i) => MEMPHIS[(n + i) % MEMPHIS.length];
   return `<svg class="memphis${grand ? ' grand' : ''}" viewBox="0 0 360 160" aria-hidden="true">
@@ -132,6 +132,12 @@ function mesures(m) {
   </div>
   <p class="small muted">${m.fillerCount ? `Tics repérés par la dictée : ${t(tics)}.` : 'Aucun tic repéré par la dictée (elle en efface souvent).'}</p>`;
 }
+
+// Atelier langue : des mots en blocs collés, le joint (le mot travaillé) en turquoise.
+const chaine = (segments) => `<span class="chaine">${segments.map((s) => `<span class="${s.joint ? 'joint' : ''}">${t(s.texte)}</span>`).join('')}</span>`;
+const motsJoints = (texte) => t(texte).replace(/\{(.+?)\}/g, '<b class="mot-joint">$1</b>');
+const compteur = (n) => `<span class="compteur" role="img" aria-label="${n} réussite${n > 1 ? 's' : ''} sur 3">${[0, 1, 2].map((i) => `<i class="${i < n ? 'plein' : ''}"></i>`).join('')}</span>`;
+const embleme = (f) => chaine([{ texte: f.embleme[0] }, { texte: f.embleme[1], joint: true }, { texte: f.embleme[2] }]);
 
 function notes(f, sessionId) {
   const s = f.scores;
@@ -209,7 +215,7 @@ function streak() {
 // Une couleur par jour de la semaine (palette iranienne) : elle surligne la série. fonce : texte blanc dessus.
 const JOURS = [
   { c: '#b87333', nom: 'mesi' }, // dimanche
-  { c: '#40e0d0', nom: 'firouzeh' },
+  { c: '#f7a8b8', nom: 'golbehi' }, // le turquoise est réservé à l'atelier langue
   { c: '#0047ab', nom: 'lajvard', fonce: true },
   { c: '#f4c430', nom: 'zaferani' },
   { c: '#900020', nom: 'zereshki', fonce: true },
