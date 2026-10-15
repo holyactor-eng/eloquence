@@ -261,13 +261,14 @@ const MOT_IMPOSE = ['relier', 'fusionner', 'remplacer'];
 export function consignePhrase(phrase, prise, audio) {
   return `Tâche : ${TYPES[phrase.type].consigne}
 Donnée : ${phrase.donnee.map((d) => `« ${d} »`).join(' ')}
-${MOT_IMPOSE.includes(phrase.type) ? `Mot obligatoire dans la réponse : « ${phrase.joint} ». Une réponse correcte qui ne l'emploie pas est fausse.\n` : ''}${phrase.indice ? `Indice donné : ${phrase.indice}\n` : ''}${phrase.attendus.length ? `Réponses modèles : ${phrase.attendus.map((a) => `« ${a} »`).join(' ')}\n` : ''}${audio ? 'Audio joint ci-après.' : "Pas d'audio."}
-Dictée du navigateur : « ${prise.transcript || '(vide)'} »`;
+${MOT_IMPOSE.includes(phrase.type) ? `Mot obligatoire dans la réponse : « ${phrase.joint} ». Une réponse correcte qui ne l'emploie pas est fausse.\n` : ''}${phrase.indice ? `Indice donné : ${phrase.indice}\n` : ''}${phrase.attendus.length ? `Réponses modèles : ${phrase.attendus.map((a) => `« ${a} »`).join(' ')}\n` : ''}${prise.ecrit ? `Réponse écrite : « ${prise.transcript} »` : `${audio ? 'Audio joint ci-après.' : "Pas d'audio."}
+Dictée du navigateur : « ${prise.transcript || '(vide)'} »`}`;
 }
 
-// Atelier langue : une phrase dite à voix haute, jugée sur la tâche demandée.
+// Atelier langue : une phrase dite à voix haute ou écrite, jugée sur la tâche demandée.
 export function verifierPhrase(key, phrase, prise, audio = null) {
-  const system = `Tu es professeur de français oral. Tu vérifies une seule phrase dite à voix haute dans un exercice.
+  const system = `Tu es professeur de français oral. Tu vérifies une seule phrase d'un exercice, dite à voix haute ou écrite.
+- Réponse écrite : l'orthographe et les accords comptent, comme la grammaire. Une ponctuation imparfaite ne suffit pas à faire échouer.
 - Réussi si la phrase dite est correcte à l'oral, garde le sens de la donnée et remplit la tâche. Accepte toute variante correcte (ordre des mots, synonyme, autre découpage). Seul le mot obligatoire indiqué doit être présent tel quel : une phrase correcte qui ne l'emploie pas est fausse.
 - Si l'audio est joint, il fait foi. La dictée confond des mots qui se prononcent pareil (« dont » et « don », « en » et « an ») : ce n'est jamais une erreur de l'orateur.
 - Ne juge ni l'accent ni la prononciation, sauf si elle change le mot (« que » au lieu de « dont »).

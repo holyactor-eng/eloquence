@@ -145,6 +145,15 @@ test('vérification : le mot imposé est exigé pour relier, fusionner et rempla
   assert.doesNotMatch(consignePhrase({ ...base, type: 'couper', joint: null, attendus: [] }, { transcript: 'x' }, null), /obligatoire/);
 });
 
+test("vérification : une réponse écrite est présentée comme écrite, sans dictée ni audio", async () => {
+  const { consignePhrase } = await import('../coach.js');
+  const p = { type: 'relier', donnee: ['A.'], joint: 'donc', attendus: ['B.'] };
+  const ecrit = consignePhrase(p, { transcript: 'Bien que tu es là.', ecrit: true }, null);
+  assert.match(ecrit, /Réponse écrite : « Bien que tu es là\. »/);
+  assert.doesNotMatch(ecrit, /Dictée|audio/i);
+  assert.match(consignePhrase(p, { transcript: 'x' }, null), /Dictée du navigateur : « x »/);
+});
+
 test("versCarnet : rien à ajouter, c'est le même tableau (l'app n'écrit pas, donc ne synchronise pas)", () => {
   const c = ajouterAuCarnet([], err(), J, T);
   assert.equal(versCarnet(c, [], 's', J, T), c);

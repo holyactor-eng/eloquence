@@ -571,7 +571,7 @@ function sessionView(id) {
     <h1>${t(s.titre)}</h1>
     <p class="muted">${dateFr(s.date)}</p>
     ${audios.has(s.id) ? `<p><audio controls src="${audios.get(s.id).url}" style="width:100%"></audio></p>` : ''}
-    ${s.langue ? `${chaine(s.langue.map((r) => ({ texte: r.reussi ? 'juste' : 'à reprendre', joint: r.reussi })))}<ul>${s.langue.map((r) => `<li>${r.reussi ? 'Juste' : 'À reprendre'} : « ${t(r.dit || '(rien entendu)')} »</li>`).join('')}</ul>` : s.souffle ? `${palier(s.note)}<p>Expirations : ${s.souffle.map((d) => `${nf(d)} s`).join(', ')}.</p>` : s.aveugle ? `<ul>${s.aveugle.map((x) => `<li>${x.note ? `${x.note}. ` : ''}Voulu : ${t(nomIntention(x.voulu))}. Entendu : ${t(nomIntention(x.entendu))}.</li>`).join('')}</ul>`
+    ${s.langue ? `${chaine(s.langue.map((r) => ({ texte: r.reussi ? 'juste' : 'à reprendre', joint: r.reussi })))}<ul>${s.langue.map((r) => `<li>${r.reussi ? 'Juste' : 'À reprendre'}${r.ecrit ? ' (écrit)' : ''} : « ${t(r.dit || '(rien entendu)')} »</li>`).join('')}</ul>` : s.souffle ? `${palier(s.note)}<p>Expirations : ${s.souffle.map((d) => `${nf(d)} s`).join(', ')}.</p>` : s.aveugle ? `<ul>${s.aveugle.map((x) => `<li>${x.note ? `${x.note}. ` : ''}Voulu : ${t(nomIntention(x.voulu))}. Entendu : ${t(nomIntention(x.entendu))}.</li>`).join('')}</ul>`
       : s.intonation ? `<ul>${s.intonation.map((x) => (typeof x === 'number' ? { chute: x } : x)).map((x) => `<li>${x.note ? `${x.note}. ` : ''}Ta voix a commencé à descendre ${nf(x.chute)} s avant la fin.</li>`).join('')}</ul>`
       : mesures(s.metrics)}
     ${s.manuel && !s.transcript ? '' : `<h2>Notes du coach</h2>${fb}`}
@@ -1342,7 +1342,22 @@ function seanceLangue() {
   const poser = () => {
     if (i >= file.length) return fin();
     prise = null;
-    cadre('<div class="actions"><button class="btn primary" data-act="dire">Dire</button></div>');
+    cadre('<div class="actions"><button class="btn primary" data-act="dire">Dire</button><button class="btn" data-act="ecrire">Écrire</button></div>');
+  };
+
+  // Écrire : l'orthographe et les accords comptent. Correction automatique coupée, sinon le clavier corrige à ta place.
+  const ecrire = () => {
+    cadre(`<textarea class="court" id="ecrit" lang="fr" spellcheck="false" autocorrect="off" autocomplete="off" autocapitalize="sentences" aria-label="Ta phrase"></textarea>
+      <div class="actions"><button class="btn primary" data-act="valider">Vérifier</button><button class="btn" data-act="dire">Dire plutôt</button></div>`);
+    document.getElementById('ecrit')?.focus();
+  };
+
+  const valider = () => {
+    const champ = document.getElementById('ecrit');
+    if (!normaliser(champ.value)) return champ.focus();
+    prise = { transcript: champ.value.trim(), ecrit: true };
+    cadre(attente('Je vérifie ta phrase.'));
+    juger();
   };
 
   const dire = async () => {
@@ -1386,15 +1401,15 @@ function seanceLangue() {
       const v = await verifierPhrase(key, p, prise, await wav(prise.blob));
       if (actif) resultat(v);
     } catch (e) {
-      cadre(`<p class="error">${t(errMsg(e))}</p><div class="actions"><button class="btn primary" data-act="auto">Juger moi-même</button><button class="btn" data-act="dire">Redire</button></div>`);
+      cadre(`<p class="error">${t(errMsg(e))}</p><div class="actions"><button class="btn primary" data-act="auto">Juger moi-même</button>${prise.ecrit ? '<button class="btn" data-act="ecrire">Réécrire</button>' : '<button class="btn" data-act="dire">Redire</button>'}</div>`);
     }
   };
 
   const autoEval = () => {
     const p = file[i];
-    cadre(`<p>Tu as dit : « ${t(prise.transcript || '(dictée vide)')} »</p>
+    cadre(`<p>Tu as ${prise.ecrit ? 'écrit' : 'dit'} : « ${t(prise.transcript || '(dictée vide)')} »</p>
       ${p.attendus.length ? `<p class="small">Réponse attendue :</p>${chaine(decouper(p.attendus[0], p.joint))}` : '<p class="small">Vérifie : deux ou trois phrases de quinze mots au plus, et le même sens.</p>'}
-      <div class="actions"><button class="btn primary" data-act="oui">J'ai dit ça</button><button class="btn" data-act="non">Pas tout à fait</button></div>`);
+      <div class="actions"><button class="btn primary" data-act="oui">J'ai ${prise.ecrit ? 'écrit' : 'dit'} ça</button><button class="btn" data-act="non">Pas tout à fait</button></div>`);
   };
 
   const resultat = (v) => {
@@ -1402,7 +1417,7 @@ function seanceLangue() {
     const dit = v.entendu || prise?.transcript || '';
     const correct = v.correction || p.attendus[0] || '';
     const regle = v.regle || p.regle || (p.fiche ? `Fiche ${p.fiche} : ${FICHES[p.fiche - 1].titre}.` : '');
-    resultats.push({ id: p.id, type: p.type, reussi: v.reussi, dit });
+    resultats.push({ id: p.id, type: p.type, reussi: v.reussi, dit, ...(prise?.ecrit && { ecrit: true }) });
     let note = '';
     if (p.type === 'corriger') {
       const e = get('carnet', []).find((x) => x.id === p.carnet);
@@ -1424,7 +1439,7 @@ function seanceLangue() {
     if (v.reussi) return cadre(`${palier('OK', 'Juste.')}${chaine(decouper(dit, p.joint))}${note ? `<p class="small">${t(note)}</p>` : ''}${suite}`);
     cadre(`${palier('Répéter', 'À reprendre.')}
       <div class="correction langue">
-        <p class="dit">Tu as dit : « ${t(dit || '(rien entendu)')} »</p>
+        <p class="dit">Tu as ${prise?.ecrit ? 'écrit' : 'dit'} : « ${t(dit || '(rien entendu)')} »</p>
         ${correct ? chaine(decouper(correct, p.joint)) : ''}
         ${regle ? `<p class="regle">${t(regle)}</p>` : ''}
       </div>
@@ -1458,6 +1473,8 @@ function seanceLangue() {
   function agir(e) {
     const act = e.target.closest('[data-act]')?.dataset.act;
     if (act === 'dire') dire();
+    if (act === 'ecrire') ecrire();
+    if (act === 'valider') valider();
     if (act === 'stop') arreter();
     if (act === 'auto') autoEval();
     if (act === 'oui') resultat({ reussi: true, entendu: prise.transcript || file[i].attendus[0] });
