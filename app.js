@@ -388,6 +388,12 @@ function prise(ex, consigne, onDone, { retour = ex.retour, etiquette = ex.origin
       <p class="didascalie">${t(consigne)}</p>
       ${ex.texte ? `<p class="texte-lu">${texteLu(ex.texte)}</p>` : ''}
       <p class="muted">Durée visée : ${ex.cible} secondes.</p>
+      ${ex.exemple ? `<details class="exemple"><summary>Voir un exemple</summary>
+        <p class="small muted">${t(ex.exemple.enjeu)}</p>
+        <div class="carte"><h3>Avant, sans y penser</h3><p>« ${t(ex.exemple.avant)} »</p></div>
+        <div class="carte"><h3>Après, en visant le but</h3><p>« ${t(ex.exemple.apres)} »</p></div>
+        <p><b>Règle.</b> ${t(ex.exemple.regle)}</p>
+        <p class="small muted">Exemple inventé, à dire en ${Math.round(ex.exemple.apres.split(/\s+/).length / 2.3)} s environ. Il sert à sentir le but : ne le récite pas, prends tes propres faits.</p></details>` : ''}
       ${canTranscribe ? '' : '<p class="note">Ce navigateur ne propose pas la dictée : pas de surtitres pendant que tu parles. Le coach écoutera quand même l\'enregistrement.</p>'}
       <div class="actions">
         ${ex.prep ? `<button class="btn primary" data-act="prep">Me préparer (${ex.prep} s)</button>` : ''}

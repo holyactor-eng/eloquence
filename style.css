@@ -132,6 +132,7 @@ summary { cursor: pointer; font-size: .8rem; font-weight: 600; text-transform: u
 .carte { border: 3px solid var(--line); padding: 16px 20px; margin: 12px 0; }
 .carte h3 { margin-top: 0; }
 .carte p:last-child { margin-bottom: 0; }
+.exemple .carte p { white-space: pre-line; }
 .technique { background: var(--surface); border: 5px solid var(--line); padding: 20px; margin: 12px 0; }
 .texte-lu { font-size: 1.15rem; line-height: 1.75; padding: 16px 20px; background: var(--sunken); border: 3px solid var(--line); }
 .pause { font-family: var(--mono); font-weight: 700; padding: 0 .15em; }

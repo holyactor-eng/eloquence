@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as C from '../content.js';
+import { EXEMPLES } from '../exemples.js';
 
 const strings = (v) => (typeof v === 'string' ? [v] : v && typeof v === 'object' ? Object.values(v).flatMap(strings) : []);
 const all = strings(C);
@@ -44,4 +45,13 @@ test('structure : 15 leçons dans l’ordre, piliers valides, exercices complets
     ids.push(e.id);
   }
   assert.equal(new Set(ids).size, ids.length);
+});
+
+test('chaque exemple est branché sur un exercice de leçon et complet', () => {
+  const exos = Object.fromEntries(C.LECONS.flatMap((l) => l.exercices).map((e) => [e.id, e]));
+  for (const [id, x] of Object.entries(EXEMPLES)) {
+    assert.ok(exos[id], `exercice inconnu : ${id}`);
+    assert.equal(exos[id].exemple, x, `exemple non branché : ${id}`);
+    for (const k of ['enjeu', 'avant', 'apres', 'regle']) assert.ok(x[k]?.length > 20, `${id}.${k} manquant`);
+  }
 });

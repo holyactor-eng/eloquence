@@ -1,5 +1,6 @@
 // Contenu de l'app. Règles : pas de tiret cadratin, guillemets français, tutoiement (vérifié par test/content.test.js).
 // {sujet}, {phrase} et {mot} sont remplacés au hasard à l'affichage.
+import { EXEMPLES } from './exemples.js';
 
 export const PILIERS = {
   mental: { lettre: "M", nom: "Mental", desc: "Réduire le trac, dépersonnaliser le regard des autres, accepter l'imperfection." },
@@ -469,5 +470,5 @@ export const TEST = [
 ];
 
 // Identifiants stables des exercices.
-for (const l of LECONS) l.exercices.forEach((e, i) => (e.id = `l${l.n}-${i + 1}`));
+for (const l of LECONS) l.exercices.forEach((e, i) => { e.id = `l${l.n}-${i + 1}`; if (EXEMPLES[e.id]) e.exemple = EXEMPLES[e.id]; });
 for (const s of SITUATIONS) s.exercices.forEach((e, i) => (e.id = `${s.id}-${i + 1}`));
