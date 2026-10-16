@@ -1,4 +1,4 @@
-import { LECONS, ECHAUFFEMENTS, SITUATIONS, QUESTIONNAIRE, TEST, PILIERS, SUJETS, PHRASES, MOTS, FINS_DE_PHRASE, INTENTIONS, PHRASES_INTENTION } from './content.js';
+import { LECONS, ECHAUFFEMENTS, SITUATIONS, QUESTIONNAIRE, TEST, PILIERS, SUJETS, PHRASES, MOTS, OBJETS, SAUGRENUES, ROLES, FINS_DE_PHRASE, INTENTIONS, PHRASES_INTENTION } from './content.js';
 import { FICHES, CONNECTEURS } from './fiches.js';
 import { TYPES, aParle, correspond, decouper, normaliser, ajouterAuCarnet, apresRevision, retirer, aReviser, versCarnet, noterPhrase, ficheCourante, etatFiches, seanceDuJour, erreursParCategorie, tauxAtelier } from './langue.js';
 import { analyze, dureeSouffle, noteSouffle } from './metrics.js';
@@ -36,7 +36,7 @@ const t = (s) => typo(esc(s));
 // Les ids et les liens d'une séance viennent de données importées ou synchronisées : jamais de HTML ni de « javascript: ».
 const lien = (h, defaut = '#/') => (typeof h === 'string' && h.startsWith('#/') ? esc(h) : defaut);
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
-const fill = (s) => s.replace('{sujet}', pick(SUJETS)).replace('{phrase}', pick(PHRASES));
+const fill = (s) => s.replace('{sujet}', pick(SUJETS)).replace('{phrase}', pick(PHRASES)).replace('{objet}', pick(OBJETS)).replace('{saugrenue}', pick(SAUGRENUES)).replace('{role}', pick(ROLES));
 const day = (iso) => new Date(iso).toLocaleDateString('sv');
 const dateFr = (iso) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
 const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;

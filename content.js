@@ -13,6 +13,7 @@ const VIRELANGUES = "Les chaussettes de l'archiduchesse sont-elles sèches, arch
 
 const TEXTE_PAUSES = "Le théâtre m'a appris une chose. / Ce n'est pas celui qui parle le plus fort qu'on écoute. // C'est celui qui sait se taire au bon moment. / Sur scène, le silence n'est pas un vide. // C'est l'instant où le public se penche en avant.";
 
+const TEXTE_ROLE = "Ce soir, la salle municipale ouvre ses portes à vingt heures. Le spectacle dure une heure et quart, sans entracte. Merci d'éteindre vos téléphones. À la sortie, l'équipe vous attend pour un verre et quelques questions.";
 const CRITERES_VIRELANGUES = "Compare ce que tu entends au texte attendu : mots avalés, syllabes escamotées, sons confondus. OK si tout reste net jusqu'à la lecture la plus rapide, Moyen si quelques accrocs, Répéter si plusieurs mots sont déformés.";
 const AVEUGLE_CONSIGNE = "Écoute les trois modèles. Choisis une intention en secret, dis la phrase : le coach dit ce qu'il a entendu.";
 const FINS_CONSIGNE = "Écoute la voix qui lâche, puis la voix portée. Répète la phrase et compare ta courbe à celle du modèle.";
@@ -314,7 +315,26 @@ export const ECHAUFFEMENTS = [
   { id: "fins-de-phrase", titre: "Fins de phrase", cible: "intonation", consigne: FINS_CONSIGNE, intonation: true, duree: 120 },
   { id: "trois-intentions", titre: "Trois intentions", cible: "ton et intention", consigne: AVEUGLE_CONSIGNE, aveugle: true, duree: 120 },
   { id: "souffle", titre: "Respiration 4-4-6", cible: "trac", consigne: "Inspire 4 secondes par le nez, retiens 4 secondes, puis expire 6 secondes sur un « sss » régulier, téléphone à 30 cm. Six cycles.", respiration: true, duree: 84 },
+  { id: "boniment", titre: "Boniment", cible: "conviction et énergie", consigne: "Tu es camelot sur un marché. Vends cet objet en 60 secondes : {objet}. Un argument logique, un argument qui touche, puis une demande claire.", prep: 15, duree: 60, criteres: "Un argument logique et un argument d'émotion, bien distincts. Énergie tenue jusqu'au bout. Fin sur une demande nette, pas sur « voilà »." },
+  { id: "question-saugrenue", titre: "Question saugrenue", cible: "blancs et répartie", consigne: "On te demande : « {saugrenue} » Réponds tout de suite, sérieusement, comme à une vraie question.", prep: 5, duree: 45, criteres: "Démarrage sans blanc. Une réponse claire en première phrase, puis une raison et un exemple. Sérieux tenu ; l'humour est permis, la fuite non." },
+  { id: "lettre-imaginaire", titre: "Lettre imaginaire", cible: "fluidité", consigne: "Prends une feuille blanche. Lis-la à voix haute comme une lettre reçue ce matin : invente qui l'écrit, ce qu'elle annonce et comment elle finit.", prep: 5, duree: 60, criteres: "Ça doit sonner lu, pas improvisé : débit régulier, peu de reprises. Une formule d'ouverture, une nouvelle, une formule de fin." },
+  { id: "texte-role", titre: "Texte dans un rôle", cible: "intention et voix", consigne: "Lis ce texte comme {role}. Garde les mots, change tout le reste : rythme, hauteur, énergie.", texte: TEXTE_ROLE, prep: 10, duree: 45, criteres: "Rôle reconnaissable à la voix seule. Texte entier, sans mot avalé. Fins de phrase tenues." },
 ];
+
+export const OBJETS = ["un vieux parapluie", "une chaise sans dossier", "un trombone", "une boîte à chaussures vide", "un réveil qui sonne trop tôt", "une cuillère en bois", "un caillou", "un rouleau de scotch", "une plante en plastique", "un ticket de métro usagé"];
+
+export const SAUGRENUES = [
+  "Si les chaises pouvaient parler, que diraient-elles de nous ?",
+  "Faut-il apprendre la politesse aux pigeons ?",
+  "Quelle couleur a le mardi ?",
+  "Pourquoi les chaussettes disparaissent-elles une par une ?",
+  "Que ferais-tu si tu étais un nuage pendant une journée ?",
+  "Peut-on jouer un spectacle pour un public de chats ?",
+  "Faut-il un permis pour siffler ?",
+  "Quel est le meilleur moment pour manger une soupe ?",
+];
+
+export const ROLES = ["une journaliste de radio qui annonce une nouvelle grave", "un présentateur de jeu télévisé", "une humoriste de stand-up", "un commentateur sportif en fin de match", "une guide de musée qui chuchote", "un professeur devant une classe agitée"];
 
 export const SUJETS = [
   "Faut-il rendre les musées gratuits pour tout le monde ?",
@@ -385,6 +405,18 @@ export const SITUATIONS = [
       { titre: "Prise de position nuancée", consigne: "Sujet : « Faut-il conditionner les subventions culturelles à des objectifs de fréquentation ? » Donne ta position en 60 secondes, avec nuance, sans formule de combat finale.", prep: 30, cible: 60, criteres: "Position claire dès le début. Nuance réelle. Exemple concret. Pas de slogan." },
       { titre: "Répondre à une contradiction", consigne: "Un intervenant te contredit : « Vous défendez une culture élitiste qui ne parle qu'aux convaincus. » Réponds en 45 secondes.", prep: 15, cible: 45, criteres: "Contradiction accueillie comme une conversation, pas comme une joute. Part de vrai reconnue. Réponse par un fait vécu. Calme, pas de contre-attaque." },
       { titre: "Conclure une table ronde", consigne: "Tu dois conclure une table ronde sur la culture et l'exil en 45 secondes. Termine sur une image ou une question, pas sur une morale.", prep: 30, cible: 45, criteres: "Synthèse courte. Fin ouverte. Ni slogan ni ton moralisateur." },
+    ],
+  },
+  {
+    id: "debat", titre: "Débat et contradiction",
+    contexte: "Réunions, conseils, tables rondes. L'autre utilise un procédé plutôt qu'un argument. Repère-le, nomme-le avec des mots simples (« là, vous généralisez »), puis reviens à ta position. Calme, jamais de joute.",
+    exercices: [
+      { titre: "« Ça ne marche jamais »", consigne: "Un élu te lance : « Les ateliers de quartier, ça ne marche jamais, les gens ne viennent pas. » Repère le procédé, nomme-le calmement, puis réponds. 45 secondes.", prep: 15, cible: 45, criteres: "Procédé attendu : généralisation abusive. Parade : un contre-exemple précis et vécu (lieu, nombre, moment). Procédé nommé sans ironie blessante. Retour à ta position. Pas de contre-attaque." },
+      { titre: "« Toutes les études montrent »", consigne: "« Toutes les études montrent que la médiation culturelle ne change rien. » Repère le procédé, nomme-le calmement, puis réponds. 45 secondes.", prep: 15, cible: 45, criteres: "Procédé attendu : preuve invérifiable. Parade : demander la source avec curiosité, sans soupçon, puis apporter un fait vérifiable. Pas de surenchère d'études contre études." },
+      { titre: "Le festival ou l'école", consigne: "En conseil municipal : « Soit on garde le festival, soit on rénove l'école. Il faut choisir. » Repère le procédé, nomme-le calmement, puis réponds. 45 secondes.", prep: 15, cible: 45, criteres: "Procédé attendu : faux dilemme. Parade : refuser le cadre à deux options et en ouvrir une troisième, concrète (étaler, cofinancer, phaser). Ne pas défendre le festival contre l'école." },
+      { titre: "« Vous dites ça pour votre poste »", consigne: "« Vous dites ça parce que vous voulez protéger votre poste. » Repère le procédé, nomme-le calmement, puis réponds. 30 secondes.", prep: 10, cible: 30, criteres: "Procédé attendu : lecture de pensée, qui glisse vers l'attaque personnelle. Parade : humour léger ou retour aux faits, sans longue justification. Revenir au sujet, pas à la personne. Aucune agressivité." },
+      { titre: "Un tag, tous casseurs", consigne: "« Un jeune a tagué la salle après votre atelier. Vos ateliers attirent les casseurs. » Repère le procédé, nomme-le calmement, puis réponds. 45 secondes.", prep: 15, cible: 45, criteres: "Procédé attendu : confusion entre un individu et le groupe. Parade : reconnaître le fait sans le minimiser, puis distinguer le cas isolé du groupe. Retour à ce que l'atelier produit." },
+      { titre: "« Demain, tout le monde »", consigne: "« Si on finance votre projet, demain chaque association viendra réclamer son festival. » Repère le procédé, nomme-le calmement, puis réponds. 45 secondes.", prep: 15, cible: 45, criteres: "Procédé attendu : exagération, la pente glissante. Parade : questionner l'énormité de la conséquence, puis rappeler le critère qui encadre la décision. Ton posé, pas moqueur." },
     ],
   },
   {
