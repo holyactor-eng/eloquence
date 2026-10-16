@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CATEGORIES_CARNET, aParle, plus, normaliser, correspond, decouper, ajouterAuCarnet, apresRevision, retirer, aReviser, versCarnet, entreAuCarnet,
-  noterPhrase, ficheCourante, etatFiches, seanceDuJour, erreursParCategorie, tauxAtelier,
+  noterPhrase, ficheCourante, etatFiches, seanceDuJour, erreursParCategorie, tauxAtelier, memeSon,
 } from '../langue.js';
 
 const J = '2026-10-13', T = '2026-10-13T09:00:00.000Z';
@@ -158,4 +158,13 @@ test("versCarnet : rien à ajouter, c'est le même tableau (l'app n'écrit pas, 
   const c = ajouterAuCarnet([], err(), J, T);
   assert.equal(versCarnet(c, [], 's', J, T), c);
   assert.equal(versCarnet(c, [{ categorie: 'tic de langage', dit: 'du coup', propositions: ['donc'], regle: 'r', aVerifier: false }], 's', J, T), c);
+});
+
+test("memeSon : les lettres muettes ne comptent pas, ce qui s'entend compte", () => {
+  for (const [a, b] of [['les théâtre', 'les théâtres'], ['elles sont aimé', 'elles sont aimées'], ['ils parle', 'ils parlent'], ["j'ai manger", "j'ai mangé"], ['vous parler', 'vous parlez'], ['ils parlait', 'ils parlaient'], ['ils sont content', 'ils sont contents'], ['une amie joli', 'une amie jolie']]) {
+    assert.ok(memeSon(a, b), `${a} / ${b}`);
+  }
+  for (const [a, b] of [['le théâtre', 'les théâtres'], ['un grand maison', 'une grande maison'], ['une grand maison', 'une grande maison'], ['les chevals', 'les chevaux'], ['le projet que', 'le projet dont'], ['il parle', 'il a parlé']]) {
+    assert.ok(!memeSon(a, b), `${a} / ${b}`);
+  }
 });

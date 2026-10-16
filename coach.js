@@ -1,5 +1,5 @@
 import { enteteWav } from './recorder.js';
-import { TYPES } from './langue.js';
+import { TYPES, memeSon } from './langue.js';
 
 // Appels à Gemini (Google AI Studio, offre gratuite) : diagnostic d'entrée et feedback d'exercice.
 // Réponses en JSON structuré. L'audio est joint quand il existe.
@@ -38,6 +38,7 @@ Tu reçois une prise de parole : l'enregistrement audio quand il existe, et la t
 - Si l'audio est joint, il fait foi. Écoute-le en entier. Juge aussi la voix : intonation (les fins de phrase qui montent sonnent comme des doutes), débit, pauses, souffle, articulation, hésitations et reprises. Donne une transcription fidèle de l'audio, avec les « euh », les « du coup » et les reprises.
 - Sans audio, la transcription de la dictée est ta seule source. Elle efface souvent les « euh », coupe mal les phrases et peut remplacer un mot par un mot proche. Laisse alors transcription et voix vides.
 - Ne juge ni la ponctuation, ni les majuscules, ni l'orthographe, ni les accords qui ne s'entendent pas à l'oral.
+- Un « s » de pluriel, un « e » de féminin après voyelle, le « ent » d'un verbe ou « é » contre « er » ne s'entendent pas : « les théâtre » et « les théâtres » sonnent pareil. Écris-les toujours correctement dans tes citations et ne les corrige jamais.
 - Une différence entre la dictée et ce qui a été dit est une erreur de la dictée, jamais une correction. La dictée déforme surtout les noms propres (prénom, nom, lieux, titres d'œuvres) : ne les corrige jamais.
 - Ne signale une erreur de langue que si elle est plausiblement de l'orateur (préposition ou élision manquante, phrase sans verbe, mot lourd ou rare, redondance, phrase trop longue). Mets aVerifier à true si tu n'en es pas sûr.
 - Langue : relève aussi un connecteur qui ne suit pas la logique (« par conséquent » devant une cause, « en effet » employé pour « en fait »), une répétition qu'un pronom aurait évitée (dont, en, y, celui, celle), un mot passe-partout (faire, mettre, avoir, il y a, chose, truc) quand un mot précis existe, et une erreur de genre ou d'accord qui s'entend.
@@ -219,7 +220,9 @@ export function feedback(key, exercise, take, perso, audio = null) {
   const user = `Exercice : ${exercise.titre}
 Consigne : ${exercise.consigne}
 ${exercise.texte ? `Texte à lire : « ${exercise.texte} »\n` : ''}${exercise.criteres ? `Critères spécifiques : ${exercise.criteres}\n` : ''}${describe(take, audio)}`;
-  return ask(key, [COACH, personal(perso)].filter(Boolean).join('\n\n'), [{ text: user }, ...audioPart(audio)], FEEDBACK_SCHEMA, 'medium');
+  return ask(key, [COACH, personal(perso)].filter(Boolean).join('\n\n'), [{ text: user }, ...audioPart(audio)], FEEDBACK_SCHEMA, 'medium')
+    // Filet de sécurité : une correction qui ne change que des lettres muettes ne s'entend pas, on l'écarte.
+    .then((f) => ({ ...f, corrections: f.corrections.filter((c) => !c.propositions.length || !c.propositions.every((p) => memeSon(c.dit, p))) }));
 }
 
 const INTENTION_SCHEMA = obj({
@@ -272,10 +275,13 @@ export function verifierPhrase(key, phrase, prise, audio = null) {
 - Réussi si la phrase dite est correcte à l'oral, garde le sens de la donnée et remplit la tâche. Accepte toute variante correcte (ordre des mots, synonyme, autre découpage). Seul le mot obligatoire indiqué doit être présent tel quel : une phrase correcte qui ne l'emploie pas est fausse.
 - Si l'audio est joint, il fait foi. La dictée confond des mots qui se prononcent pareil (« dont » et « don », « en » et « an ») : ce n'est jamais une erreur de l'orateur.
 - Ne juge ni l'accent ni la prononciation, sauf si elle change le mot (« que » au lieu de « dont »).
+- Réponse dite : un accord ou une terminaison qui ne s'entend pas (« les théâtre », « j'ai manger ») n'est jamais une erreur.
 - Si c'est raté : correction est la phrase correcte la plus proche de ce qui a été dit, regle tient en une phrase, categorie nomme l'erreur.
 
 ${RULES}`;
-  return ask(key, system, [{ text: consignePhrase(phrase, prise, audio) }, ...audioPart(audio)], VERIF_SCHEMA, 'low');
+  return ask(key, system, [{ text: consignePhrase(phrase, prise, audio) }, ...audioPart(audio)], VERIF_SCHEMA, 'low')
+    // À l'oral, une « erreur » qui ne tient qu'à des lettres muettes ne s'entend pas : la phrase est réussie.
+    .then((v) => (!prise.ecrit && !v.reussi && v.correction && memeSon(v.entendu, v.correction) ? { ...v, reussi: true, correction: '', regle: '' } : v));
 }
 
 // answers : [{question, reponse}], takes : [{titre, transcript, metrics, audio}], drills : [{id, titre, cible}]

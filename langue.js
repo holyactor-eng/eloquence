@@ -30,6 +30,16 @@ export function plus(jour, n) {
 
 export const normaliser = (s = '') => s.toLowerCase().replace(/’/g, "'").replace(/[-.,;:!?«»"()…]/g, ' ').replace(/\s+/g, ' ').trim();
 
+// Finales qui ne s'entendent pas : s ou x du pluriel, « ent » des verbes, t final, e après voyelle, er, ez et é.
+// Les mots de trois lettres ou moins gardent leur forme : « le » et « les » ne sonnent pas pareil.
+const sonFinal = (m) => (m.length < 4 ? m : m.replace(/[sx]$/, '').replace(/ent$/, 'e').replace(/t$/, '').replace(/([aeiouyéèêâîôû])e$/, '$1').replace(/(er|ez)$/, 'é'));
+
+// Deux phrases qui ne diffèrent que par des lettres muettes : « les théâtre » et « les théâtres ».
+export function memeSon(a, b) {
+  const x = normaliser(a).split(' '), y = normaliser(b).split(' ');
+  return x.length === y.length && x.every((m, i) => sonFinal(m) === sonFinal(y[i]));
+}
+
 // Une prise a-t-elle de la voix ? Un micro muet donne quand même un fichier audio : on regarde la dictée et le niveau sonore.
 export const aParle = (prise) => Boolean(normaliser(prise.transcript)) || prise.speechEnd > 0;
 
