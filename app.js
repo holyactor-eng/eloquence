@@ -584,6 +584,7 @@ function sessionView(id) {
   app.onclick = (e) => {
     if (!e.target.closest('[data-act="retry"]')) return;
     s.error = null;
+    saveSession(s); // sessionView relit la séance : sans cela, l'ancienne erreur resterait affichée
     askFeedback(s);
     sessionView(id);
   };
