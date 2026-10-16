@@ -1,6 +1,6 @@
 import { LECONS, ECHAUFFEMENTS, SITUATIONS, QUESTIONNAIRE, TEST, PILIERS, SUJETS, PHRASES, MOTS, OBJETS, SAUGRENUES, ROLES, FINS_DE_PHRASE, INTENTIONS, PHRASES_INTENTION } from './content.js';
 import { FICHES, CONNECTEURS } from './fiches.js';
-import { TYPES, aParle, correspond, decouper, normaliser, ajouterAuCarnet, apresRevision, retirer, aReviser, versCarnet, noterPhrase, ficheCourante, etatFiches, seanceDuJour, erreursParCategorie, tauxAtelier } from './langue.js';
+import { TYPES, aParle, correspond, sansEntites, decouper, normaliser, ajouterAuCarnet, apresRevision, retirer, aReviser, versCarnet, noterPhrase, ficheCourante, etatFiches, seanceDuJour, erreursParCategorie, tauxAtelier } from './langue.js';
 import { analyze, dureeSouffle, noteSouffle } from './metrics.js';
 import { startRecording, canTranscribe, toWavBase64, decodeMono, wavOctets, SILENCE_RMS } from './recorder.js';
 import { feedback, diagnose, speak, intention, verifierPhrase } from './coach.js';
@@ -32,7 +32,7 @@ function saveSession(s) {
 const esc = (s = '') => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 // Espaces insécables de la typographie française.
 const typo = (s) => s.replace(/« /g, '« ').replace(/ »/g, ' »').replace(/ ([:;!?])/g, ' $1');
-const t = (s) => typo(esc(s));
+const t = (s) => typo(esc(sansEntites(s))); // décode aussi les retours de Gemini déjà enregistrés
 // Les ids et les liens d'une séance viennent de données importées ou synchronisées : jamais de HTML ni de « javascript: ».
 const lien = (h, defaut = '#/') => (typeof h === 'string' && h.startsWith('#/') ? esc(h) : defaut);
 const pick = (a) => a[Math.floor(Math.random() * a.length)];

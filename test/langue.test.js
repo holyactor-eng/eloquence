@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CATEGORIES_CARNET, aParle, plus, normaliser, correspond, decouper, ajouterAuCarnet, apresRevision, retirer, aReviser, versCarnet, entreAuCarnet,
-  noterPhrase, ficheCourante, etatFiches, seanceDuJour, erreursParCategorie, tauxAtelier, memeSon,
+  noterPhrase, ficheCourante, etatFiches, seanceDuJour, erreursParCategorie, tauxAtelier, memeSon, sansEntites,
 } from '../langue.js';
 
 const J = '2026-10-13', T = '2026-10-13T09:00:00.000Z';
@@ -167,4 +167,12 @@ test("memeSon : les lettres muettes ne comptent pas, ce qui s'entend compte", ()
   for (const [a, b] of [['le théâtre', 'les théâtres'], ['un grand maison', 'une grande maison'], ['une grand maison', 'une grande maison'], ['les chevals', 'les chevaux'], ['le projet que', 'le projet dont'], ['il parle', 'il a parlé']]) {
     assert.ok(!memeSon(a, b), `${a} / ${b}`);
   }
+});
+
+test('sansEntites : entités de Gemini, même cassées', () => {
+  assert.equal(sansEntites("R&eacuteduis, Ma&icirctriser, plut&ocirct, &Eacutecoute"), 'Réduis, Maîtriser, plutôt, Écoute');
+  assert.equal(sansEntites('T&e9h&e9ran habit&e9e, r&#233;sumer, &#xe0; toi'), 'Téhéran habitée, résumer, à toi');
+  assert.equal(sansEntites('&laquo;oui&raquo; c&rsquo;est'), '«oui» c’est');
+  assert.equal(sansEntites('Rien à changer : « déjà » R&D 42'), 'Rien à changer : « déjà » R&D 42');
+  assert.equal(sansEntites(7), '7');
 });

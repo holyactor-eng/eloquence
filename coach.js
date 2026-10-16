@@ -1,5 +1,5 @@
 import { enteteWav } from './recorder.js';
-import { TYPES, memeSon } from './langue.js';
+import { TYPES, memeSon, sansEntites } from './langue.js';
 
 // Appels à Gemini (Google AI Studio, offre gratuite) : diagnostic d'entrée et feedback d'exercice.
 // Réponses en JSON structuré. L'audio est joint quand il existe.
@@ -27,6 +27,7 @@ export const GARDE_FOUS = [
 const RULES = `Règles d'écriture de tes réponses :
 - Français, tutoiement, phrases courtes et concrètes.
 - Jamais de tiret cadratin. Guillemets français « ».
+- Accents et caractères écrits tels quels (é, à, ç), jamais en entités HTML (&eacute;, &#233;).
 - Aucun tic d'IA ni langage corporate : pas de « il est important de noter », « en effet », « il convient de », « force est de constater », « synergie », « holistique », « incroyable », « extraordinaire », « révolutionnaire ». Tu peux citer ces mots entre guillemets quand tu corriges l'orateur.
 - Pas de compliment creux. Un point fort n'est cité que s'il est précis et cite ce qui a été dit.`;
 
@@ -174,8 +175,8 @@ async function ask(key, system, parts, schema, thinkingLevel) {
     if (cand.finishReason === 'MAX_TOKENS') throw new Error('Réponse tronquée. Réessaie.');
     if (cand.finishReason && cand.finishReason !== 'STOP') throw new Error(`Gemini s'est arrêté (${cand.finishReason}). Réessaie.`);
     const text = (cand.content?.parts ?? []).filter((p) => p.text && !p.thought).map((p) => p.text).join('');
-    // Filet de sécurité : jamais de tiret cadratin à l'écran.
-    return JSON.parse(text.replace(/\s*—\s*/g, ', '));
+    // Filets de sécurité : jamais de tiret cadratin à l'écran, ni d'entité HTML dans le texte.
+    return JSON.parse(text.replace(/\s*—\s*/g, ', '), (k, v) => (typeof v === 'string' ? sansEntites(v) : v));
   }
   throw lastError;
 }

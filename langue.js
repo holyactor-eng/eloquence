@@ -40,6 +40,17 @@ export function memeSon(a, b) {
   return x.length === y.length && x.every((m, i) => sonFinal(m) === sonFinal(y[i]));
 }
 
+// Gemini glisse parfois des entités HTML, souvent cassées : « r&eacuteceptacle », « T&e9h&e9ran », « &#233; ».
+const DIACRITIQUES = { acute: '́', grave: '̀', circ: '̂', uml: '̈', cedil: '̧' };
+const NOMMEES = { laquo: '«', raquo: '»', nbsp: ' ', rsquo: '’', lsquo: '‘', hellip: '…', oelig: 'œ', OElig: 'Œ', quot: '"', apos: "'", amp: '&' };
+export const sansEntites = (s = '') => String(s)
+  .replace(/&([a-z])(acute|grave|circ|uml|cedil);?/gi, (_, l, d) => l + DIACRITIQUES[d.toLowerCase()])
+  .replace(new RegExp(`&(${Object.keys(NOMMEES).join('|')});?`, 'g'), (_, n) => NOMMEES[n])
+  .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+  .replace(/&#(\d+);?/g, (_, n) => String.fromCodePoint(Number(n)))
+  .replace(/&([c-f][0-9a-f])/gi, (_, h) => String.fromCodePoint(parseInt(h, 16))) // « &e9 » : deux chiffres, sinon « habit&e9e » casserait
+  .normalize('NFC');
+
 // Une prise a-t-elle de la voix ? Un micro muet donne quand même un fichier audio : on regarde la dictée et le niveau sonore.
 export const aParle = (prise) => Boolean(normaliser(prise.transcript)) || prise.speechEnd > 0;
 
