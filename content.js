@@ -44,7 +44,7 @@ export const LECONS = [
       { titre: "Tenir jusqu'au point final", texte: "Une voix qui retombe trop tôt avale les derniers mots, souvent les plus importants. En français, l'accent tombe sur la dernière syllabe du groupe de mots. Chaque groupe finit par une légère montée qui annonce la suite ; seule la dernière syllabe de la phrase descend, un peu allongée. Garde le fond de la salle en ligne de mire jusqu'au point." },
       { titre: "Parler depuis le souffle", texte: "Une voix qui tient vient du ventre, pas de la gorge. Inspire par le nez en gonflant le ventre, parle sur l'expiration. Quand la voix serre, c'est que le souffle manque : reprends de l'air plutôt que de forcer." },
       { titre: "Le volume juste", texte: "Vise la personne la plus éloignée de la pièce. Parler un peu plus fort que nécessaire donne l'impression d'être à sa place. Parler trop bas oblige l'auditoire à faire l'effort, et il décroche." },
-      { titre: "L'intention avant le ton", texte: "Ne cherche pas « une voix assurée ». Décide ce que tu veux produire chez l'autre : rassurer, convaincre, alerter. Le ton suit l'intention. C'est le travail de l'acteur, et tu le connais." },
+      { titre: "L'intention avant le ton", texte: "Ne cherche pas « une voix assurée ». Décide ce que tu veux produire chez l'autre : rassurer, convaincre, alerter. Le ton suit l'intention. C'est le travail de l'acteur, et tu le connais. Les trois cartes suivantes donnent le sous-texte et les repères à l'oreille de chaque intention : ce sont les mêmes que ceux du coach." },
       { titre: "Ta voix entière", texte: "Ton accent, tes langues, tes références font partie de ta voix. Ne les gomme pas pour paraître inoffensif ou pour éviter un stéréotype. Change de registre quand ton interlocuteur le demande, pas par peur d'être jugé." },
     ],
     exercices: [
@@ -295,6 +295,17 @@ export const INTENTIONS = {
   convaincre: { nom: "Convaincre", soustexte: "« C'est juste, et je vais te le prouver. »", reperes: "Débit régulier, voix pleine, accent sur le mot qui prouve, pause avant l'argument, descente nette sur la dernière syllabe." },
   alerter: { nom: "Alerter", soustexte: "« Attention, il faut agir maintenant. »", reperes: "Attaque nette, débit plus rapide, voix plus haute et plus forte, mots détachés, fin courte et ferme." },
 };
+
+// Leçon 2 : mêmes repères que le coach, affichés avant l'exercice et rappelés dans sa consigne.
+{
+  const l2 = LECONS[1];
+  const lignes = Object.values(INTENTIONS).map((v) => `${v.nom} : ${v.soustexte} ${v.reperes}`).join(' ');
+  const i = l2.cartes.findIndex((c) => c.titre === "L'intention avant le ton");
+  l2.cartes.splice(i + 1, 0, ...Object.values(INTENTIONS).map((v) => ({ titre: `Intention : ${v.nom.toLowerCase()}`, texte: `Pense : ${v.soustexte} À l'oreille : ${v.reperes}` })));
+  const ex = l2.exercices[0];
+  ex.consigne += ` Joue le sous-texte, pas le ton. Repères. ${lignes}`;
+  ex.criteres = `Compare chaque version à ces repères, pas à un goût personnel. ${lignes} Pour chaque version, dis laquelle tu entends, ce qui la porte et le repère qui manque.`;
+}
 
 // Phrases neutres, qui peuvent porter les trois intentions. Mot d'insistance suggéré pour convaincre et pour alerter.
 export const PHRASES_INTENTION = [
